@@ -1,0 +1,21 @@
+Ideas about how to structure our software
+
+2018-03-09: Theo's notes:
+
+A few key Python classes:
+    - Main Robot class that has a main method that runs in a loop.
+    - LidarProcessor class that handles the i2c interface with a lidar sensor
+      and has a method that outputs relevant data. In the Robot class, create
+      one instance of this class for each sensor.
+    - ServoDriver class that has nice, modularized methods/commands that allows
+      the Robot class to easily call these commands and have the ServoDriver
+      class handle the PWM output to the servos, etc. (How does ServoBlaster
+      factor into this?)
+      
+- We should probably have some sort of state estimation function. Not sure how
+  worthwhile it is to try to keep track of possible errors in our state
+  estimation akin to probabilistic robotics.
+- We need a designated piece of code that takes as input the known data about
+  the maze's structure and solves it. This then needs to get translated into
+  motion commands.
+
