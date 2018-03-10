@@ -2,9 +2,15 @@
 
 int main(){
 
-  vl6180 handle = vl6180_initialise(1);
+  vl6180 handle;
 
-  vl6180_change_addr(handle, 0x24);
+  if ((handle = vl6180_initialise(1)) < 0){
+   return handle;
+  }
+
+  vl6180_change_addr(handle, 0x21);
+  
+  //set_scaling(handle, 1); It is scale 1 by default 
 
   int distance = get_distance(handle);
 
