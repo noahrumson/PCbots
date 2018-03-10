@@ -12,6 +12,7 @@ class Robot(object):
 
     def __init__(self):
         self.initialize_lidars()
+        self.lidar_queue = self.lreader.lidar_queue
 
     # TODO: theta (heading) should perhaps be accounted for. Currently set to a
     #       default value of 0.
@@ -31,6 +32,10 @@ class Robot(object):
     
     def mainloop(self):
         print 'Start of mainloop'
+        while True:
+            if not self.lidar_queue.empty():
+                lidar_data = self.lidar_queue.get()
+                print lidar_data
         
         
 if __name__ == '__main__':
