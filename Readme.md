@@ -1,4 +1,4 @@
-# Brown IEEE Robotics Olympiad Software 
+# Brown IEEE Robotics Olympiad Software
 Team:
   - Theo Guerin
   - Peter Huson
@@ -7,15 +7,15 @@ Team:
   - Lina Lim
   - Nick Keirstead
 
-#### In order to connect to the Raspberry Pi, follow these steps: 
+#### In order to connect to the Raspberry Pi, follow these steps:
   - Plug the Pi into a power source (USB has worked so far)
   - Connect to the "defaultdrone" network (wait 60 seconds or so until the Pi has booted)
-  - The password is "bigbubba" 
-  - Open a terminal prompt and type the following command: 
+  - The password is "IEEEshrekt"
+  - Open a terminal prompt and type the following command:
     
 ```sh
 $ ssh pi@defaultdrone.local
 ```
     
   - Type in the password "bigbubba"
-  - You are now connected to the Pi! 
+  - You are now connected to the Pi!
