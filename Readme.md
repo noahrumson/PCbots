@@ -5,7 +5,7 @@ Team:
   - Camden Baer
   - Noah Rubin
   - Lina Lim
-  - Nick Keirstead
+  - Nick Keirstead (RIP)
 
 #### In order to connect to the Raspberry Pi, follow these steps:
   - Plug the Pi into a power source (USB has worked so far)
