@@ -1,0 +1,10 @@
+to compile c:
+g++ -I -fpic -c [files.cpp] -o [files.o]
+g++ -shared -o lib[xxx].so [files.o] -lpigpio -lrt
+
+in python:
+from ctypes import *
+import os
+lib = cdll.LoadLibrary(os.path.abspath(libfile))
+lib.foo.restype = c_[int, double, etc]
+lib.foo()
