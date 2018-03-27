@@ -33,6 +33,7 @@ class Robot(object):
     def mainloop(self):
         print 'Start of mainloop'
         while True:
+            # lidar_data = self.lidar_queue.get(block=True)
             if not self.lidar_queue.empty():
                 lidar_data = self.lidar_queue.get()
                 print lidar_data

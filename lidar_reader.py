@@ -24,7 +24,7 @@ class LidarReader(threading.Thread):
         # "ungraceful" crash, set daemon equal to True or False. True if it can
         # be terminated spontaneously without causing problems... Defaults to
         # false, I believe
-        # self.daemon = True
+        self.daemon = True
         self.lidar_queue = Queue.Queue()
         
     def run(self):

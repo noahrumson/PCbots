@@ -1,0 +1,48 @@
+import pigpio
+import time
+
+pi = pigpio.pi()
+
+# Servo signal pins
+ne = 4 # northeast
+nw = 17 # northwest
+sw = 22 # southwest
+se = 10 # southeast
+
+# Set RPi pins as outputs
+pi.set_mode(ne, pigpio.OUTPUT)
+pi.set_mode(nw, pigpio.OUTPUT)
+pi.set_mode(se, pigpio.OUTPUT)
+pi.set_mode(sw, pigpio.OUTPUT)
+
+# Set PWM frequencies to 50 (shouldn't change)
+pi.set_PWM_frequency(ne, 50)
+pi.set_PWM_frequency(nw, 50)
+pi.set_PWM_frequency(se, 50)
+pi.set_PWM_frequency(sw, 50)
+
+# Set pulsewidths, which controls each servo's velocity
+# 1500 is stopped, 1300 is max clockwise, 1700 is max counterclockwise
+pi.set_servo_pulsewidth(ne, 1400)
+pi.set_servo_pulsewidth(nw, 1600)
+pi.set_servo_pulsewidth(se, 1400)
+pi.set_servo_pulsewidth(sw, 1600)
+time.sleep(3) # Drive for 3 seconds
+
+pi.set_servo_pulsewidth(ne, 1600)
+pi.set_servo_pulsewidth(sw, 1400)
+time.sleep(3) # Drive for 3 seconds
+
+pi.set_servo_pulsewidth(se, 1600)
+pi.set_servo_pulsewidth(nw, 1400)
+time.sleep(3) # Drive for 3 seconds
+
+pi.set_servo_pulsewidth(ne, 1400)
+pi.set_servo_pulsewidth(sw, 1600)
+time.sleep(3) # Drive for 3 seconds
+
+# Stop the servos
+pi.set_servo_pulsewidth(ne, 1500)
+pi.set_servo_pulsewidth(nw, 1500)
+pi.set_servo_pulsewidth(se, 1500)
+pi.set_servo_pulsewidth(sw, 1500)
