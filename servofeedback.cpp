@@ -1,11 +1,13 @@
 /*
 	Exposes these functions:
 		void init()				-- call this at the start
-		double servo_angle_ne	-- returns angle of ne servo in revolutions (radians / 2pi)
-		double servo_angle_nw	-- returns angle of nw servo in revolutions (radians / 2pi)
-		double servo_angle_sw	-- returns angle of sw servo in revolutions (radians / 2pi)
-		double servo_angle_se	-- returns angle of se servo in revolutions (radians / 2pi)
+		double servo_angle_ne()	-- returns angle of ne servo in revolutions (radians / 2pi)
+		double servo_angle_nw()	-- returns angle of nw servo in revolutions (radians / 2pi)
+		double servo_angle_sw()	-- returns angle of sw servo in revolutions (radians / 2pi)
+		double servo_angle_se()	-- returns angle of se servo in revolutions (radians / 2pi)
 */
+
+#include <iostream>
 
 #include "pigpio.h"
 
@@ -63,7 +65,11 @@ servo_feedback_reader feedback_se;
 
 extern "C" void init()
 {
-	gpioInitialise();
+	int res = gpioInitialise();
+	if (res < 0) {
+		std::cout << "gpioInitialise() failed with error " << res << std::endl;
+		gpioInitialise();
+	}
 	gpioSetMode(SERVO_OUTPUT_NE, PI_OUTPUT);
 	gpioSetMode(SERVO_OUTPUT_NW, PI_OUTPUT);
 	gpioSetMode(SERVO_OUTPUT_SW, PI_OUTPUT);
