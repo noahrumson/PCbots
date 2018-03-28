@@ -1,6 +1,10 @@
 import pigpio
 import time
+import ctypes
+import os
 
+lib = ctypes.cdll.LoadLibrary(os.path.abspath('../libservofeedback.so'))
+lib.init()
 pi = pigpio.pi()
 
 # Servo signal pins
@@ -8,12 +12,6 @@ ne = 4 # northeast
 nw = 17 # northwest
 sw = 22 # southwest
 se = 10 # southeast
-
-# Set RPi pins as outputs
-pi.set_mode(ne, pigpio.OUTPUT)
-pi.set_mode(nw, pigpio.OUTPUT)
-pi.set_mode(se, pigpio.OUTPUT)
-pi.set_mode(sw, pigpio.OUTPUT)
 
 # Set PWM frequencies to 50 (shouldn't change)
 pi.set_PWM_frequency(ne, 50)
