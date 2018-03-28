@@ -26,6 +26,15 @@ constexpr int SERVO_INPUT_NW = 9;
 constexpr int SERVO_INPUT_SW = 11;
 constexpr int SERVO_INPUT_SE = 5;
 
+double clamp(double x, double min, double max)
+{
+	if (x < min)
+		return min;
+	if (x > max)
+		return max;
+	return x;
+}
+
 struct servo_feedback_reader
 {
 	uint32_t last_tick;
@@ -37,6 +46,7 @@ struct servo_feedback_reader
 double servo_feedback_reader::angle_in_revolutions() const
 {
 	double duty_cycle = (double) last_pulse_width / SERVO_FEEDBACK_PERIOD;
+	duty_cycle = clamp(duty_cycle, DUTY_CYCLE_MIN, DUTY_CYCLE_MAX);
 	return (duty_cycle - DUTY_CYCLE_MIN) / (DUTY_CYCLE_MAX - DUTY_CYCLE_MIN);
 }
 
@@ -47,15 +57,6 @@ void feedback_state_changed(int gpio, int level, uint32_t tick)
 		reader.last_pulse_width = tick - reader.last_tick;
 	}
 	reader.last_tick = tick;
-}
-
-double clamp(double x, double min, double max)
-{
-	if (x < min)
-		return min;
-	if (x > max)
-		return max;
-	return x;
 }
 
 servo_feedback_reader feedback_ne;
