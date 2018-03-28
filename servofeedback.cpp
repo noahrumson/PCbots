@@ -5,6 +5,7 @@
 		double servo_angle_nw()	-- returns angle of nw servo in revolutions (radians / 2pi)
 		double servo_angle_sw()	-- returns angle of sw servo in revolutions (radians / 2pi)
 		double servo_angle_se()	-- returns angle of se servo in revolutions (radians / 2pi)
+		void terminate()		-- call before exiting
 */
 
 #include <iostream>
@@ -87,3 +88,5 @@ extern "C" double servo_angle_ne() { return feedback_ne.angle_in_revolutions(); 
 extern "C" double servo_angle_nw() { return feedback_nw.angle_in_revolutions(); }
 extern "C" double servo_angle_sw() { return feedback_sw.angle_in_revolutions(); }
 extern "C" double servo_angle_se() { return feedback_se.angle_in_revolutions(); }
+
+extern "C" double terminate() { return gpioTerminate(); }
