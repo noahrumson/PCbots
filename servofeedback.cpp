@@ -89,4 +89,4 @@ extern "C" double servo_angle_nw() { return feedback_nw.angle_in_revolutions(); 
 extern "C" double servo_angle_sw() { return feedback_sw.angle_in_revolutions(); }
 extern "C" double servo_angle_se() { return feedback_se.angle_in_revolutions(); }
 
-extern "C" double terminate() { return gpioTerminate(); }
+extern "C" void terminate() { return gpioTerminate(); }
