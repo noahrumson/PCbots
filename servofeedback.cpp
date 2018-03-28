@@ -8,8 +8,6 @@
 		void terminate()		-- call before exiting
 */
 
-#include <iostream>
-
 #include "pigpio.h"
 
 constexpr double DUTY_CYCLE_MIN = 0.029;
@@ -89,4 +87,4 @@ extern "C" double servo_angle_nw() { return feedback_nw.angle_in_revolutions(); 
 extern "C" double servo_angle_sw() { return feedback_sw.angle_in_revolutions(); }
 extern "C" double servo_angle_se() { return feedback_se.angle_in_revolutions(); }
 
-extern "C" void terminate() { return gpioTerminate(); }
+extern "C" void terminate() { gpioTerminate(); }
