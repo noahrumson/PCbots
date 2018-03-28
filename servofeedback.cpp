@@ -8,8 +8,6 @@
 		void terminate()		-- call before exiting
 */
 
-#include <iostream>
-
 #include "pigpio.h"
 
 constexpr double DUTY_CYCLE_MIN = 0.029;
