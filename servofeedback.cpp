@@ -65,11 +65,7 @@ servo_feedback_reader feedback_se;
 
 extern "C" void init()
 {
-	int res = gpioInitialise();
-	if (res < 0) {
-		std::cout << "gpioInitialise() failed with error " << res << std::endl;
-		gpioInitialise();
-	}
+	gpioInitialise();
 	gpioSetMode(SERVO_OUTPUT_NE, PI_OUTPUT);
 	gpioSetMode(SERVO_OUTPUT_NW, PI_OUTPUT);
 	gpioSetMode(SERVO_OUTPUT_SW, PI_OUTPUT);
