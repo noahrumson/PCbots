@@ -20,8 +20,13 @@ class Robot(object):
         self.initialize_lidars()
         self.initialize_servos()
         self.lidar_queue = self.lreader.lidar_queue
-        # At a distance of 50 mm, robot is close to wall
+        # At a distance of 60 mm, robot is close to wall
         self.near_wall_thresh = 60
+        # NOTE: If the robot is perfectly centered and oriented straight in a
+        #       square, then a lidar's distance to a corresponding neighboring
+        #       wall is about 42 mm (calculation based on 3D CAD model
+        #       dimensions and roughly verified by observation of lidar readout)
+        # NOTE: Upper bound of servo range is about 100 mm
         self.motion_list = [self.servo_handler.move_north,
                             self.servo_handler.move_south,
                             self.servo_handler.move_east,
