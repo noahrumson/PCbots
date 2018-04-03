@@ -63,10 +63,14 @@ class Robot(object):
         # Initial pose and velocity and time
         prev_pose = PoseVelTimestamp(0, 0, 0, 0, 0, t_start)
         
+        self.servo_handler.move_north()
+        
         self.prev_move_dir = None
         
         lidar_data = None # indicates absence of lidar data at any given loop
-        while True:
+        # while True:
+        # while (t_elapsed < 4):
+        while (abs(prev_pose.hdg) < math.radians(45)):
             # lidar_data = self.lidar_queue.get(block=True)
             # Try to read Lidar data, if new data has come in
             if not self.lidar_queue.empty():
@@ -79,6 +83,7 @@ class Robot(object):
                                                                angles)
             cur_time = time.time()
             cur_pose = self.compute_cur_pose(prev_pose, delta_angles, cur_time)
+            print cur_pose.to_string()
             
             # TODO: should heading be error-corrected in a PID control loop?
             # Ideally, we want to keep a constant heading and simply translate
@@ -88,13 +93,15 @@ class Robot(object):
             # feedback
             # TODO: Implement servo position feedback
             # TODO: This is a very naive test of movement based on sensor data
-            if lidar_data is not None:
-                self.move_to_open_space(lidar_data) # TODO
+            # if lidar_data is not None:
+            #     self.move_to_open_space(lidar_data) # TODO
 
             prev_angles = angles
             prev_pose = cur_pose
             lidar_data = None
             t_elapsed = cur_time - t_start
+            
+        self.servo_handler.stop_all()
             
     def compute_cur_pose(self, prev_pose, delta_angles, t):
         '''
@@ -159,6 +166,7 @@ class Robot(object):
         
         # Average heading estimate
         robot_average_hdg = prev_pose.hdg + (robot_delta_hdg/2)
+        #robot_average_hdg = prev_pose.hdg + robot_delta_hdg
         
         # Average the four omniwheels' velocity vectors
         omniwheel_vel_sum_x = 0
@@ -182,8 +190,8 @@ class Robot(object):
         displacement_world_frame = [average_vel_world_frame[0] * delta_t,
                                     average_vel_world_frame[1] * delta_t]
         
-        return PoseVelTimestamp(displacement_world_frame[0],
-                                displacement_world_frame[1],
+        return PoseVelTimestamp(prev_pose.x + displacement_world_frame[0],
+                                prev_pose.y + displacement_world_frame[1],
                                 average_vel_world_frame[0],
                                 average_vel_world_frame[1],
                                 robot_average_hdg,
@@ -219,7 +227,7 @@ class Robot(object):
                             vel_component*direction_vectors[num][1]]
             vels.append(vel)
             vel_mags.append(v)
-        return (vels, v)
+        return (vels, vel_mags)
         
     def apply_rotation_matrix(self, original_matrix, hdg):
         rotation_mat = np.matrix([[math.cos(hdg), -math.sin(hdg)],
@@ -290,6 +298,20 @@ class PoseVelTimestamp(object):
         self.v = v
         self.hdg = hdg
         self.t = t
+        
+    def to_string(self):
+        heading_deg = math.degrees(self.hdg)
+        return_str = '----------\n'
+        return_str += 'x: {}\n'
+        return_str += 'y: {}\n'
+        return_str += 'u: {}\n'
+        return_str += 'v: {}\n'
+        return_str += 'heading (deg): {}\n'
+        return_str += 't (sec): {}\n'
+        return_str += '----------'
+        return (return_str.format(self.x, self.y,
+                                  self.u, self.v,
+                                  heading_deg, self.t))
                 
         
 if __name__ == '__main__':
@@ -297,4 +319,7 @@ if __name__ == '__main__':
     try:
         robot.mainloop()
     except KeyboardInterrupt:
+        robot.shutdown()
+    finally:
+        print 'Terminating robot.py program'
         robot.shutdown()
