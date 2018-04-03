@@ -6,6 +6,7 @@ import pigpio
 import ctypes
 import os
 import math
+import numpy as np
 
 from lidar_reader import LidarReader
 from servo_handler import ServoHandler
@@ -59,16 +60,12 @@ class Robot(object):
         # Get initial angular positions of each servo:
         prev_angles = self.servo_handler.get_angle_position_feedback()
         
+        # Initial pose and velocity and time
+        prev_pose = PoseVelTimestamp(0, 0, 0, 0, 0, t_start)
+        
         self.prev_move_dir = None
         
-        # Cumulative displacement
-        cumulative_disp = [[0, 0],
-                   [0, 0],
-                   [0, 0],
-                   [0, 0]]
         lidar_data = None # indicates absence of lidar data at any given loop
-        # Assume initial heading is 0
-        heading = 0
         while True:
             # lidar_data = self.lidar_queue.get(block=True)
             # Try to read Lidar data, if new data has come in
@@ -80,37 +77,154 @@ class Robot(object):
             angles = self.servo_handler.get_angle_position_feedback()
             delta_angles = self.servo_handler.get_delta_angles(prev_angles,
                                                                angles)
-            displacements, rotation_arclength = (self.servo_handler
-                .compute_linear_displacements_and_rotational_arclength(
-                    delta_angles))
+            cur_time = time.time()
+            cur_pose = self.compute_cur_pose(prev_pose, delta_angles, cur_time)
             
-            # Use rotation_arclength (mm) to compute heading (radians) to
-            # convert from local robot coordinates to world coordinates
-            heading += rotation_arclength/self.robot_radius
             # TODO: should heading be error-corrected in a PID control loop?
             # Ideally, we want to keep a constant heading and simply translate
             # the robot
-            
-                                                                
-            # Add displacements to cumulative displacements
-            for i in range(len(displacements)):
-                cumulative_disp[i][0] += displacements[i][0]
-                cumulative_disp[i][1] += displacements[i][1]
-                
-            self.servo_handler.print_displacements(displacements)
-            
+                        
             # Make the robot move based on lidar data and servo position
             # feedback
             # TODO: Implement servo position feedback
             # TODO: This is a very naive test of movement based on sensor data
             if lidar_data is not None:
                 self.move_to_open_space(lidar_data) # TODO
-                
-            prev_angles = angles
 
+            prev_angles = angles
+            prev_pose = cur_pose
             lidar_data = None
+            t_elapsed = cur_time - t_start
             
-            t_elapsed = time.time() - t_start
+    def compute_cur_pose(self, prev_pose, delta_angles, t):
+        '''
+        Input:
+            - prev_pose: a Pose object that is the robot's previous pose in the
+                         global coordinate frame
+            - delta_angles: a list of 4 angle measurements (angle measured from
+                            0 to 1) that represent are the change in angular
+                            position of each servo as a result of rotation
+            - t: current timestamp (seconds since the epoch)
+        Output:
+            - the current pose after applying the rotation and translation
+              given by the servo position feedback data
+              
+        Steps to compute current pose:
+            1. Compute differences of tangential velocities of each omniwheel.
+               Result is net tangential average velocity over time interval
+               delta_t
+            2. Use v=r*(omega) to get robot's average angular velocity over
+               delta_t.
+            3. Compute average angular displacement, i.e., a change in heading.
+            4. Compute an estimate for the velocity vector of the robot's center
+               of mass (assumed/estimated to be geometric center).
+                - Average the four velocity vectors
+                    - This gets an average velocity in robot's local frame
+                - Use a rotation matrix with average heading over duration of
+                  delta_t to get average velocity in global frame
+                    - Use a linear interpolation of delta_theta (change in
+                      heading) to estimate average heading as
+                      (delta_theta/2) + prev_heading
+                - Multiply average velocity in global frame by delta_t to get
+                  displacement in global frame
+                  
+        It might be possible that we could just bypass the conversion from
+        displacement to velocity back to displacement, but it is helpful for
+        intuition at least.
+        
+        Eventually can also incorporate lidar data to correct these poses,
+        perhaps. It is likely that this pose calculation will be prone to
+        accumulation/estimation errors.
+        '''
+        
+        # Change in time between two pose calculations
+        delta_t = t - prev_pose.t
+        
+        # Omniwheel tangential velocity vectors (local coords.) and magnitudes
+        # of these velocity vectors
+        vels, vel_mags = self.compute_tangential_vels(delta_angles, delta_t)
+        
+        # Compute differences of tangential velocities of each omniwheel. These
+        # magnitudes are signed, so sum them up to get net tangential velocity
+        net_tangential_vel = 0
+        for vel in vel_mags:
+            net_tangential_vel += vel
+            
+        # Compute robot's average rotational/angular velocity. Use v=r*(omega),
+        # rearranged to solve for omega
+        robot_omega = net_tangential_vel/self.robot_radius
+        
+        # Average change in heading (angular displacement)
+        robot_delta_hdg = robot_omega*delta_t
+        
+        # Average heading estimate
+        robot_average_hdg = prev_pose.hdg + (robot_delta_hdg/2)
+        
+        # Average the four omniwheels' velocity vectors
+        omniwheel_vel_sum_x = 0
+        omniwheel_vel_sum_y = 0
+        for vel in vels:
+            omniwheel_vel_sum_x += vel[0]
+            omniwheel_vel_sum_y += vel[1]
+        
+        # Average over 4 omniwheels
+        average_vel_robot_frame = np.matrix([[float(omniwheel_vel_sum_x/4)],
+                                             [float(omniwheel_vel_sum_y/4)]])
+                                                     
+        # Convert from local robot coordinates to world coordinates by
+        # multiplying the robot's velocity in the local frame by a rotation
+        # matrix
+        average_vel_world_frame = self.apply_rotation_matrix(
+                                            average_vel_robot_frame,
+                                            robot_average_hdg)
+                                            
+        # Displacement in global frame (s = v_(avg) * t)
+        displacement_world_frame = [average_vel_world_frame[0] * delta_t,
+                                    average_vel_world_frame[1] * delta_t]
+        
+        return PoseVelTimestamp(displacement_world_frame[0],
+                                displacement_world_frame[1],
+                                average_vel_world_frame[0],
+                                average_vel_world_frame[1],
+                                robot_average_hdg,
+                                t)
+
+    def compute_tangential_vels(self, delta_angles, delta_t):
+        # Direct the x and y components of the wheel's linear displacement based
+        # on the geometry of each servo
+        direction_vectors = [[-1, 1], # northeast
+                             [-1, -1], # northwest
+                             [1, 1], # southeast
+                             [1, -1]] # southwest
+        vels = []
+        vel_mags = [] # just magnitudes of velocity
+        for num, angle in enumerate(delta_angles):
+            # Magnitude of displacement and of velocity in vehicle's
+            # xy-coordinate system is the same in both directions, as each
+            # wheel is positioned 45 degrees relative to each axis.
+            # Uses the circular motion equation v=r*omega, where omega is
+            # angular frequency in radians.
+            # Radius of each omniwheel is 19 mm
+            theta = (2 * math.pi * angle)
+            # Omega is rate of change of theta. Get an average value by dividing
+            # by delta_t.
+            omega = theta/delta_t
+            # Note that clockwise rotation of an omniwheel corresponds to a
+            # positive value of omega
+            v = 19 * omega # in mm/s
+            #vel_component = v/math.sqrt(2) # in mm
+            vel_component = v*math.sqrt(2) # in mm
+            # Get x and y components by multiplying by the appropriate director
+            vel = [vel_component*direction_vectors[num][0],
+                            vel_component*direction_vectors[num][1]]
+            vels.append(vel)
+            vel_mags.append(v)
+        return (vels, v)
+        
+    def apply_rotation_matrix(self, original_matrix, hdg):
+        rotation_mat = np.matrix([[math.cos(hdg), -math.sin(hdg)],
+                                  [math.sin(hdg), math.cos(hdg)]])
+        return rotation_mat*original_matrix
             
     # TODO: Use a better algorithm for movement. This is just for basic testing
     # of responsiveness to lidar data
@@ -160,6 +274,22 @@ class Robot(object):
         # TODO: Add things to this?
         if self.servo_handler is not None:
             self.servo_handler.close_handler()
+            
+
+# Class that represents the robot's pose in the global/world coordinate frame:
+#   - x-coordinate (mm) in global frame
+#   - y-coordinate (mm) in global frame
+#   - u: velocity in x direction (mm/s) in global frame
+#   - v: velocity in y direction (mm/s) in global frame
+#   - heading (radians) in global frame
+class PoseVelTimestamp(object):
+    def __init__(self, x, y, u, v, hdg, t):
+        self.x = x
+        self.y = y
+        self.u = u
+        self.v = v
+        self.hdg = hdg
+        self.t = t
                 
         
 if __name__ == '__main__':
