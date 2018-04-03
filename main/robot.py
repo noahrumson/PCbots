@@ -78,9 +78,21 @@ class Robot(object):
                 print '------------------'
                 print 'LIDAR:'
                 print lidar_data.to_string()
+            # TODO: Consider getting angle position feedback in a separate
+            # thread, especially if we are waiting to process the data until we
+            # get a new position feedback from each servo...
             angles = self.servo_handler.get_angle_position_feedback()
-            delta_angles = self.servo_handler.get_delta_angles(prev_angles,
-                                                               angles)
+            # angles = self.get_new_angle_position_feedbacks(prev_angles)
+            
+            # TODO: Work on this angle position feedback getting. Perhaps there
+            # is a notable disparity between servos' feedback frequencies, which
+            # would probably need to be accounted for in a more sophisticated
+            # manner...
+            delta_angles = [0.0, 0.0, 0.0, 0.0]
+            while 0.0 in delta_angles:
+                angles = self.servo_handler.get_angle_position_feedback()
+                delta_angles = self.servo_handler.get_delta_angles(prev_angles,
+                                                                   angles)
             cur_time = time.time()
             cur_pose = self.compute_cur_pose(prev_pose, delta_angles, cur_time)
             print cur_pose.to_string()
@@ -102,6 +114,35 @@ class Robot(object):
             t_elapsed = cur_time - t_start
             
         self.servo_handler.stop_all()
+        
+    def get_new_angle_position_feedbacks(self, prev_angles):
+        '''
+        Return servo position feedback in packets of four. Only process
+        position, etc., when we get new position feedback from each servo. Note
+        that with the current implementation of this method, this only works if
+        all four servos are being driven and are expected to produce new
+        position feedback values. Another possible way to implement this would
+        be to sleep until new values are pretty much guaranteed to appear,
+        based on the frequency of the servo position feedback, which is about
+        1 kHz.
+        '''
+        # angles = self.servo_handler.get_angle_position_feedback()
+        # final_angles = [None, None, None, None]
+        # got_all_new_angles = False
+        # print 'Starting to get new angle position feedbacks'
+        # while not got_all_new_angles:
+        #     got_all_new_angles = True
+        #     for num, angle in enumerate(angles):
+        #         if angle != prev_angles[num]:
+        #             # Got a new position feedback value
+        #             final_angles[num] = angle
+        #         else:
+        #             got_all_new_angles = False
+        # print 'Got new angle position feedbacks'
+        # return final_angles
+        
+        time.sleep(0.05)
+        return self.servo_handler.get_angle_position_feedback()
             
     def compute_cur_pose(self, prev_pose, delta_angles, t):
         '''
@@ -156,6 +197,7 @@ class Robot(object):
         net_tangential_vel = 0
         for vel in vel_mags:
             net_tangential_vel += vel
+            print vel
             
         # Compute robot's average rotational/angular velocity. Use v=r*(omega),
         # rearranged to solve for omega
