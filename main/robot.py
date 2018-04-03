@@ -16,6 +16,9 @@ from servo_handler import ServoHandler
 class Robot(object):
 
     def __init__(self):
+        # Run the pigpio daemon
+        os.system('sudo pigpiod') # TODO: Make sure this actually works
+        
         self.servo_handler = None
         self.initialize_lidars()
         self.initialize_servos()
@@ -31,6 +34,8 @@ class Robot(object):
                             self.servo_handler.move_south,
                             self.servo_handler.move_east,
                             self.servo_handler.move_west]
+        self.robot_radius = 62 # mm. Radius from geometric center of robot's
+                               # base to center of each omniwheel
 
     # TODO: theta (heading) should perhaps be accounted for. Currently set to a
     #       default value of 0.
@@ -62,6 +67,8 @@ class Robot(object):
                    [0, 0],
                    [0, 0]]
         lidar_data = None # indicates absence of lidar data at any given loop
+        # Assume initial heading is 0
+        heading = 0
         while True:
             # lidar_data = self.lidar_queue.get(block=True)
             # Try to read Lidar data, if new data has come in
@@ -73,8 +80,17 @@ class Robot(object):
             angles = self.servo_handler.get_angle_position_feedback()
             delta_angles = self.servo_handler.get_delta_angles(prev_angles,
                                                                angles)
-            displacements = self.servo_handler.compute_linear_displacements(
-                                                                delta_angles)
+            displacements, rotation_arclength = (self.servo_handler
+                .compute_linear_displacements_and_rotational_arclength(
+                    delta_angles))
+            
+            # Use rotation_arclength (mm) to compute heading (radians) to
+            # convert from local robot coordinates to world coordinates
+            heading += rotation_arclength/self.robot_radius
+            # TODO: should heading be error-corrected in a PID control loop?
+            # Ideally, we want to keep a constant heading and simply translate
+            # the robot
+            
                                                                 
             # Add displacements to cumulative displacements
             for i in range(len(displacements)):

@@ -111,7 +111,7 @@ class ServoHandler():
             delta_angles.append(delta_angle)
         return delta_angles
         
-    def compute_linear_displacements(self, delta_angles):
+    def compute_linear_displacements_and_rotational_arclength(self, delta_angles):
         # Direct the x and y components of the wheel's linear displacement based
         # on the geometry of each servo
         direction_vectors = [[-1, 1], # northeast
@@ -119,18 +119,24 @@ class ServoHandler():
                              [1, 1], # southeast
                              [1, -1]] # southwest
         displacements = []
+        rotation_arclength = 0
         for num, angle in enumerate(delta_angles):
             # Magnitude of displacement in vehicle's xy-coordinate system is the
             # same in both directions, as each wheels is positioned 45 degrees
             # relative to each axis.
             # Uses the circular motion equation s=r*theta, where theta is in
             # radians.
-            displacement_component = (38*math.pi)/math.sqrt(2) * angle # in mm
+            # Radius of each omniwheel is 19 mm
+            s = 19 * (2 * math.pi * angle) # in mm
+            # TODO: Re-think the computation of this rotation arclength. It's
+            # probably not as simple as summing up arclengths...
+            rotation_arclength += s
+            displacement_component = s/math.sqrt(2) # in mm
             # Get x and y components by multiplying by the appropriate director
             displacement = [displacement_component*direction_vectors[num][0],
                             displacement_component*direction_vectors[num][1]]
             displacements.append(displacement)
-        return displacements
+        return (displacements, rotation_arclength)
         
     def print_displacements(self, displacements):
         print '--------------'
