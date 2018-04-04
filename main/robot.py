@@ -198,6 +198,7 @@ class Robot(object):
         for vel in vel_mags:
             net_tangential_vel += vel
             print vel
+        net_tangential_vel = net_tangential_vel/4 # TODO: Does this work? Avg?
             
         # Compute robot's average rotational/angular velocity. Use v=r*(omega),
         # rearranged to solve for omega
