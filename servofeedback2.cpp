@@ -61,6 +61,8 @@ template<servo_feedback_reader& reader>
 void feedback_state_changed(int pi, unsigned int gpio, unsigned int level, uint32_t tick)
 {
 	if (level == 1) {
+		std::cout << "Pulse duration: " << reader.last_pulse_ended - reader.last_pulse_started << ", ";
+		std::cout << "Period: " << (tick - reader.last_pulse_started) << std::endl;
 		reader.duty_cycle = (reader.last_pulse_ended - reader.last_pulse_started) / (tick - reader.last_pulse_started);
 		reader.last_pulse_started = tick;
 	}
