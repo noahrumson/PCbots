@@ -114,7 +114,7 @@ extern "C" {
 	double servo_angle_sw() { return feedback_sw.angle_in_revolutions(); }
 	double servo_angle_se() { return feedback_se.angle_in_revolutions(); }
 
-	int lidar_distance_north() { std::cout << get_distance(lidar_north) << std::endl; get_distance(lidar_north); }
+	int lidar_distance_north() { std::cout << "here" << std::endl; get_distance(lidar_north); }
 	int lidar_distance_west() { return get_distance(lidar_west); }
 	int lidar_distance_south() { return get_distance(lidar_south); }
 	int lidar_distance_east() { return get_distance(lidar_east); }
