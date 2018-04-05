@@ -7,7 +7,7 @@ Exposes these functions:
 	double servo_angle_sw()	-- returns angle of sw servo in revolutions (radians / 2pi)
 	double servo_angle_se()	-- returns angle of se servo in revolutions (radians / 2pi)
 	
-	int lidar_distance_north()
+	int lidar_distance_north()	-- distance in millimeters
 	int lidar_distance_west()
 	int lidar_distance_south()
 	int lidar_distance_east()
@@ -85,7 +85,7 @@ vl6180 lidar_east;
 int pi_handle;
 
 extern "C" {
-	void init()
+	int init()
 	{
 		pi_handle = pigpio_start(0, 0);
 		set_mode(pi_handle, SERVO_OUTPUT_NE, PI_OUTPUT);
@@ -107,6 +107,8 @@ extern "C" {
 		lidar_west = vl6180_initialise_address(1, LIDAR_WEST);
 		lidar_south = vl6180_initialise_address(1, LIDAR_SOUTH);
 		lidar_east = vl6180_initialise_address(1, LIDAR_EAST);
+
+		return pi_handle;
 	}
 
 	double servo_angle_ne() { return feedback_ne.angle_in_revolutions(); }
