@@ -14,7 +14,7 @@ import math
 # feedback data
 #class ServoHandler(threading.Thread):
 class ServoHandler():
-    def __init__(self):
+    def __init__(self, lib, pi_handler):
         #threading.Thread.__init__(self)
         #self.daemon = True
         #self.servo_queue = Queue.Queue()
@@ -27,15 +27,9 @@ class ServoHandler():
         # self.sw = 22 # southwest
         # self.se = 10 # southeast
         
-        self.lib = ctypes.cdll.LoadLibrary(os.path.abspath('/home/pi/A-Maze/'
-                                                        'libservofeedback.so'))
-        self.lib.init()
-        # Set the return types to double
-        self.lib.servo_angle_ne.restype = ctypes.c_double
-        self.lib.servo_angle_nw.restype = ctypes.c_double
-        self.lib.servo_angle_se.restype = ctypes.c_double
-        self.lib.servo_angle_sw.restype = ctypes.c_double
-        self.pi = pigpio.pi()
+        self.lib = lib
+        
+        self.pi = pi_handler
         # TODO: Every now and then there is an error with pigpio containing the
         # following. The error occurs seemingly spontaneously...:
         # "initInitialise: bind to port 8888 failed (Address already in use)"

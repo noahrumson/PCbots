@@ -19,7 +19,10 @@ import subprocess
 # sensors and their address collisions?
 
 class LidarReader(threading.Thread):
-    def __init__(self):
+    def __init__(self, lib):
+        
+        self.lib = lib
+        
         threading.Thread.__init__(self)
         # TODO: Depending on whether or not the Lidar C code can handle an
         # "ungraceful" crash, set daemon equal to True or False. True if it can
@@ -28,63 +31,40 @@ class LidarReader(threading.Thread):
         self.daemon = True
         self.lidar_queue = Queue.Queue()
         
-        GPIO.setmode(GPIO.BCM)     # Number GPIOs by channelID
-        GPIO.setwarnings(False)    # Ignore Errors
+        # GPIO.setmode(GPIO.BCM)     # Number GPIOs by channelID
+        # #GPIO.setwarnings(False)    # Ignore Errors
+        #
+        # # Setup all GPIO pins as low.
+        # GPIO.setup(6, GPIO.OUT)     # GPIO_06 = Lidar0
+        # GPIO.setup(13, GPIO.OUT)     # GPIO_13 = Lidar1
+        # GPIO.setup(19, GPIO.OUT)     # GPIO_19 = Lidar2
+        # GPIO.setup(26, GPIO.OUT)     # GPIO_26 = Lidar3
+        #
+        # self.chip_enable_lidars()
         
-        # Setup all GPIO pins as low.
-        GPIO.setup(6, GPIO.OUT)     # GPIO_06 = Lidar0
-        GPIO.setup(13, GPIO.OUT)     # GPIO_13 = Lidar1
-        GPIO.setup(19, GPIO.OUT)     # GPIO_19 = Lidar2
-        GPIO.setup(26, GPIO.OUT)     # GPIO_26 = Lidar3
-        
-        self.chip_enable_lidars()
-        
-    def chip_enable_lidars(self):
-        # Chip Enable by pulling high
-        GPIO.output(6, 1)
-        GPIO.output(13, 1)
-        GPIO.output(19, 1)
-        GPIO.output(26, 1)
-        
-    def setup_processes(self):
-        # Create the subprocesses
-        self.lidar_west_process = subprocess.Popen(
-                            ['/home/pi/A-Maze/standalone/initializei2c/runme0'],
-                            stdout = subprocess.PIPE)
-        self.lidar_north_process = subprocess.Popen(
-                            ['/home/pi/A-Maze/standalone/initializei2c/runme1'],
-                            stdout = subprocess.PIPE)
-        self.lidar_east_process = subprocess.Popen(
-                            ['/home/pi/A-Maze/standalone/initializei2c/runme2'],
-                            stdout = subprocess.PIPE)
-        self.lidar_south_process = subprocess.Popen(
-                            ['/home/pi/A-Maze/standalone/initializei2c/runme3'],
-                             stdout = subprocess.PIPE)
+    # def chip_enable_lidars(self):
+    #     # Chip Enable by pulling high
+    #     GPIO.output(6, 1)
+    #     GPIO.output(13, 1)
+    #     GPIO.output(19, 1)
+    #     GPIO.output(26, 1)
                                                    
     def get_data(self):
-        print 'getting data'
-        # Run subprocesses and get standard output. Keep track of timestamps
-        # corresponding to data
+        print 'GETTING LIDAR DATA'
+        # Keep track of timestamps corresponding to data
         
-        # This may not be the best way to do this. May need try/except to catch
-        # possible exceptions
-        self.setup_processes()
 
-        north_output = self.lidar_north_process.communicate()[0]
+        north_dist = self.lib.lidar_distance_north()
         north_time = time.time()
-        north_dist = self.get_dist_from_output(north_output)
         
-        south_output = self.lidar_south_process.communicate()[0]
+        south_dist = self.lib.lidar_distance_south()
         south_time = time.time()
-        south_dist = self.get_dist_from_output(south_output)
 
-        east_output = self.lidar_east_process.communicate()[0]
+        east_dist = self.lib.lidar_distance_east()
         east_time = time.time()
-        east_dist = self.get_dist_from_output(east_output)
 
-        west_output = self.lidar_west_process.communicate()[0]
+        west_dist = self.lib.lidar_distance_west()
         west_time = time.time()
-        west_dist = self.get_dist_from_output(west_output)
         
         lidar_data = LidarData(north_time, north_dist, south_time, south_dist,
                          east_time, east_dist, west_time, west_dist)
@@ -93,13 +73,8 @@ class LidarReader(threading.Thread):
         #                       (south_time, south_dist),
         #                       (east_time, east_dist),
         #                       (west_time, west_dist)])
-        
+        print 'DONE GETTING LIDAR DATA'
         self.lidar_queue.put(lidar_data)
-        
-    def get_dist_from_output(self, output):
-        # Parse out the "Distance: " characters in the output string of the
-        # lidar reading process. This could be changed on the C code side
-        return int(output.replace('Distance: ', ''))
         
     def run(self):
         # Run the thread

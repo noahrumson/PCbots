@@ -7,6 +7,8 @@ import ctypes
 import os
 import math
 import numpy as np
+import subprocess
+import RPi.GPIO as GPIO
 
 from lidar_reader import LidarReader
 from servo_handler import ServoHandler
@@ -20,6 +22,38 @@ class Robot(object):
     def __init__(self):
         # Run the pigpio daemon
         #os.system('sudo pigpiod') # TODO: Make sure this actually works
+        #subprocess.call(['sudo', 'pigpiod'])
+        
+        GPIO.setmode(GPIO.BCM)     # Number GPIOs by channelID
+        GPIO.setwarnings(False)    # Ignore Errors
+        
+        # Setup all GPIO pins as low.
+        GPIO.setup(6, GPIO.OUT)     # GPIO_06 = Lidar0
+        GPIO.setup(13, GPIO.OUT)     # GPIO_13 = Lidar1
+        GPIO.setup(19, GPIO.OUT)     # GPIO_19 = Lidar2
+        GPIO.setup(26, GPIO.OUT)     # GPIO_26 = Lidar3
+        
+        # Chip enable
+        GPIO.output(6, 1)
+        GPIO.output(13, 1)
+        GPIO.output(19, 1)
+        GPIO.output(26, 1)
+        
+        self.lib = ctypes.cdll.LoadLibrary(os.path.abspath('/home/pi/A-Maze/'
+                                                        'libsensordata.so'))
+        self.lib.init()
+        self.pi = pigpio.pi() # binds to port 8888 by default
+        # For servo feedback data: set the return types to double
+        self.lib.servo_angle_ne.restype = ctypes.c_double
+        self.lib.servo_angle_nw.restype = ctypes.c_double
+        self.lib.servo_angle_se.restype = ctypes.c_double
+        self.lib.servo_angle_sw.restype = ctypes.c_double
+        
+        # For lidar mm range data: set the return types to int
+        self.lib.lidar_distance_north.restype = ctypes.c_int
+        self.lib.lidar_distance_south.restype = ctypes.c_int
+        self.lib.lidar_distance_east.restype = ctypes.c_int
+        self.lib.lidar_distance_west.restype = ctypes.c_int
         
         self.servo_handler = None
         self.initialize_lidars()
@@ -48,13 +82,13 @@ class Robot(object):
         
     def initialize_lidars(self):
         # Create a LidarReader object
-        self.lreader = LidarReader()
+        self.lreader = LidarReader(self.lib)
         # Call the LidarReader object's start() method, starting its thread
         self.lreader.start()
         print 'LidarReader thread started'
         
     def initialize_servos(self):
-        self.servo_handler = ServoHandler()
+        self.servo_handler = ServoHandler(self.lib, self.pi)
         self.servo_feedback_reader = ServoFeedbackReader(self.servo_handler)
         # Start the servo feedback reader's thread
         self.servo_feedback_reader.start()
@@ -108,9 +142,9 @@ class Robot(object):
             # Try to read Lidar data, if new data has come in
             if not self.lidar_queue.empty():
                 lidar_data = self.lidar_queue.get()
-                # print '------------------'
-                # print 'LIDAR:'
-                # print lidar_data.to_string()
+                print '------------------'
+                print 'LIDAR:'
+                print lidar_data.to_string()
                 
             # TODO: Work on this angle position feedback getting. Perhaps there
             # is a notable disparity between servos' feedback frequencies, which
@@ -137,7 +171,7 @@ class Robot(object):
                 cur_pose = self.compute_cur_pose(prev_pose, delta_angles, cur_time)
                 prev_pose = cur_pose
                 
-                print cur_pose.to_string()
+                #print cur_pose.to_string()
             
                 prev_angles = angles
                 
@@ -435,4 +469,7 @@ if __name__ == '__main__':
         robot.shutdown()
     finally:
         print 'Terminating robot.py program'
+        GPIO.cleanup()
+        #subprocess.call(['sudo', 'killall', 'pigpiod'])
         robot.shutdown()
+        print 'FINALLY'
