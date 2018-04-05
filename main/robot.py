@@ -37,9 +37,9 @@ class Robot(object):
                             self.servo_handler.move_south,
                             self.servo_handler.move_east,
                             self.servo_handler.move_west]
-        self.robot_radius = 62 # mm. Radius from geometric center of robot's
+        self.robot_radius = 62.0 # mm. Radius from geometric center of robot's
                                # base to center of each omniwheel
-        self.omniwheel_radius = 19 # mm
+        self.omniwheel_radius = 19.0 # mm
 
     # TODO: theta (heading) should perhaps be accounted for. Currently set to a
     #       default value of 0.
@@ -241,10 +241,10 @@ class Robot(object):
         # Velocities components of the robot in local coordinates
         #V_er = self.omniwheel_radius/math.sqrt(2) * (w_A - w_B)
         R = self.omniwheel_radius
-        V_er = (2**(1/2)*R*w_A)/4 - (2**(1/2)*R*w_B)/4 - (2**(1/2)*R*w_C)/4 + (2**(1/2)*R*w_D)/4
+        V_er = (math.sqrt(2)*R*w_A)/4 - (math.sqrt(2)*R*w_B)/4 - (math.sqrt(2)*R*w_C)/4 + (math.sqrt(2)*R*w_D)/4
         #V_eT = self.omniwheel_radius/math.sqrt(2) * (w_A/2 - w_B + w_C/2)
         #V_eT = self.omniwheel_radius/math.sqrt(2) * (w_C - w_B)
-        V_eT = (2**(1/2)*R*w_C)/4 - (2**(1/2)*R*w_B)/4 - (2**(1/2)*R*w_A)/4 + (2**(1/2)*R*w_D)/4
+        V_eT = (math.sqrt(2)*R*w_C)/4 - (math.sqrt(2)*R*w_B)/4 - (math.sqrt(2)*R*w_A)/4 + (math.sqrt(2)*R*w_D)/4
         
         # Angular velocity of entire robot
         # w_v = ((self.omniwheel_radius/math.sqrt(2) * (-w_A/2 - w_C/2))/
@@ -253,7 +253,7 @@ class Robot(object):
         R_v = self.robot_radius
         # Does this following equation just do an average like we originally had
         # assumed by intuition / simple analysis? Maybe with extra factors?
-        w_v = - (R*w_A)/(4*R_v) - (R*w_B)/(4*R_v) - (R*w_C)/(4*R_v) - (R*w_D)/(4*R_v)
+        w_v = -(R*w_A)/(4*R_v) - (R*w_B)/(4*R_v) - (R*w_C)/(4*R_v) - (R*w_D)/(4*R_v)
                 
         # 3. Estimate of the change in heading over time interval delta_t
         #print '###### w_v: ' + str(w_v)
@@ -267,14 +267,16 @@ class Robot(object):
         # Apply filter to raw heading value (robot_average_hdg)
         # TODO
 
+        # TODO: Do this coordinate frame transformation correctly...
         average_vel_robot_frame = np.matrix(
-                        [[float(V_eT)], # like i component in local coords.
-                         [float(V_er)]]) # like j component in local coords.
+                        [[V_eT], # like i component in local coords.
+                         [V_er]]) # like j component in local coords.
         #print average_vel_robot_frame
                                                      
         # Convert from local robot coordinates to world coordinates by
         # multiplying a rotation matrix by the robot's velocity in the local
         # frame
+        # TODO: Do this coordinate frame transformation correctly...
         average_vel_world_frame = self.apply_rotation_matrix(
                                             average_vel_robot_frame,
                                             robot_average_hdg)
@@ -368,6 +370,7 @@ class Robot(object):
             self.servo_handler.close_handler()
             
 
+# (Really just a vehicle state class...)
 # Class that represents the robot's pose in the global/world coordinate frame:
 #   - x-coordinate (mm) in global frame
 #   - y-coordinate (mm) in global frame
