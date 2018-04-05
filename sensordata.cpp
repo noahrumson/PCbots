@@ -16,7 +16,7 @@ Exposes these functions:
 */
 
 #include "pigpiod_if2.h"
-#include "v16180_pi.h"
+#include "vl6180_pi.h"
 
 constexpr double DUTY_CYCLE_MIN = 0.029;
 constexpr double DUTY_CYCLE_MAX = 0.971;
@@ -97,10 +97,10 @@ extern "C" {
 		callback(pi_handle, SERVO_INPUT_SW, EITHER_EDGE, feedback_state_changed<feedback_sw>);
 		callback(pi_handle, SERVO_INPUT_SE, EITHER_EDGE, feedback_state_changed<feedback_se>);
 
-		v16180 lidar_north = v16180_initialise_address(1, LIDAR_NORTH);
-		v16180 lidar_west = v16180_initialise_address(1, LIDAR_WEST);
-		v16180 lidar_south = v16180_initialise_address(1, LIDAR_SOUTH);
-		v16180 lidar_east = v16180_initialise_address(1, LIDAR_EAST);
+		vl6180 lidar_north = vl6180_initialise_address(1, LIDAR_NORTH);
+		vl6180 lidar_west = vl6180_initialise_address(1, LIDAR_WEST);
+		vl6180 lidar_south = vl6180_initialise_address(1, LIDAR_SOUTH);
+		vl6180 lidar_east = vl6180_initialise_address(1, LIDAR_EAST);
 	}
 
 	double servo_angle_ne() { return feedback_ne.angle_in_revolutions(); }
