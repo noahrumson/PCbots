@@ -36,9 +36,14 @@ double clamp(double x, double min, double max)
 
 struct servo_feedback_reader
 {
+	// OLD WAY
 	uint32_t last_tick;
 	uint32_t last_pulse_width;
+
+	// NEW WAY
+	uint32_t last_pulse_started;
 	uint32_t last_pulse_ended;
+	double duty_cycle;
 
 	double angle_in_revolutions() const;
 };
@@ -46,9 +51,8 @@ struct servo_feedback_reader
 #include <iostream>
 double servo_feedback_reader::angle_in_revolutions() const
 {
-	double duty_cycle = (double)last_pulse_width / (last_tick - last_pulse_ended);
 	std::cout << "new computed: " << duty_cycle << ", ";
-	std::cout << "old computedL " << (double)last_pulse_width / SERVO_FEEDBACK_PERIOD << std::endl;;
+	std::cout << "old computed: " << (double)last_pulse_width / SERVO_FEEDBACK_PERIOD << std::endl;
 	duty_cycle = clamp(duty_cycle, DUTY_CYCLE_MIN, DUTY_CYCLE_MAX);
 	return (duty_cycle - DUTY_CYCLE_MIN) / (DUTY_CYCLE_MAX - DUTY_CYCLE_MIN);
 }
@@ -56,9 +60,17 @@ double servo_feedback_reader::angle_in_revolutions() const
 template<servo_feedback_reader& reader>
 void feedback_state_changed(int pi, unsigned int gpio, unsigned int level, uint32_t tick)
 {
+	if (level == 1) {
+		reader.duty_cycle = (reader.last_pulse_ended - reader.last_pulse_started) / (tick - reader.last_pulse_started);
+		reader.last_pulse_started = tick;
+	}
+	else if (level == 0) {
+		reader.last_pulse_ended = tick;
+	}
+
+	// OLD WAY
 	if (level == 0) {
 		reader.last_pulse_width = tick - reader.last_tick;
-		reader.last_pulse_ended = tick;
 	}
 	reader.last_tick = tick;
 }
