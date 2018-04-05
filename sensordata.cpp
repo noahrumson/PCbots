@@ -85,9 +85,9 @@ vl6180 lidar_east;
 int pi_handle;
 
 extern "C" {
-	int init()
+	void init()
 	{
-		pi_handle = pigpio_start(0, 0);
+		pi_handle = pigpio_start(0, "7777");
 		set_mode(pi_handle, SERVO_OUTPUT_NE, PI_OUTPUT);
 		set_mode(pi_handle, SERVO_OUTPUT_NW, PI_OUTPUT);
 		set_mode(pi_handle, SERVO_OUTPUT_SW, PI_OUTPUT);
@@ -107,8 +107,6 @@ extern "C" {
 		lidar_west = vl6180_initialise_address(1, LIDAR_WEST);
 		lidar_south = vl6180_initialise_address(1, LIDAR_SOUTH);
 		lidar_east = vl6180_initialise_address(1, LIDAR_EAST);
-
-		return pi_handle;
 	}
 
 	double servo_angle_ne() { return feedback_ne.angle_in_revolutions(); }
