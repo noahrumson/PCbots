@@ -45,18 +45,28 @@ class ServoFeedbackReader(threading.Thread):
                            self.prev_feedback_data.sw_angle]
             new_angles = [None, None, None, None]
 
-            while None in new_angles:
-                #print new_angles
-                # While at least one of the servos did not receive a new
-                # position feedback angle
-                # TODO: returning a list of 0.0's...
-                angles = self.servo_handler.get_angle_position_feedback()
-                #print angles
-                cur_time = time.time()
-                for i in range(len(angles)):
-                    if angles[i] != prev_angles[i]:
-                        # Got new feedback data
-                        new_angles[i] = (cur_time, angles[i])
+            # while None in new_angles:
+            #     #print new_angles
+            #     # While at least one of the servos did not receive a new
+            #     # position feedback angle
+            #     # TODO: returning a list of 0.0's...
+            #     angles = self.servo_handler.get_angle_position_feedback()
+            #     #print angles
+            #     cur_time = time.time()
+            #     for i in range(len(angles)):
+            #         if angles[i] != prev_angles[i]:
+            #             # Got new feedback data
+            #             new_angles[i] = (cur_time, angles[i])
+            
+            cur_time = time.time()
+            angles = self.servo_handler.get_angle_position_feedback()
+            for num, angle in enumerate(angles):
+                new_angles[num] = (cur_time, angle)
+            
+            # Note that sleep time, in theory, should be a function of the speed
+            # at which we drive the robot
+            time.sleep(0.02)
+            
                         
             ne_time, ne_angle = new_angles[0]
             nw_time, nw_angle = new_angles[1]

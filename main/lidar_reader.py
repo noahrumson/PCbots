@@ -62,6 +62,7 @@ class LidarReader(threading.Thread):
                              stdout = subprocess.PIPE)
                                                    
     def get_data(self):
+        print 'getting data'
         # Run subprocesses and get standard output. Keep track of timestamps
         # corresponding to data
         

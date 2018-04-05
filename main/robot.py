@@ -51,27 +51,43 @@ class Robot(object):
         self.lreader = LidarReader()
         # Call the LidarReader object's start() method, starting its thread
         self.lreader.start()
+        print 'LidarReader thread started'
         
     def initialize_servos(self):
         self.servo_handler = ServoHandler()
         self.servo_feedback_reader = ServoFeedbackReader(self.servo_handler)
         # Start the servo feedback reader's thread
         self.servo_feedback_reader.start()
+        print 'Servo feedback thread started'
     
     def mainloop(self):
+        
+        # Manually test rotation of servo
+        # while True:
+        #     print self.servo_handler.get_angle_position_feedback()[0]
+        
         print 'Start of main loop'
         t_elapsed = 0
         t_start = time.time()
+        cur_time = t_start
         
         # Get initial angular positions of each servo:
         prev_angles = self.servo_handler.get_angle_position_feedback()
-        print prev_angles
-        
+                
         # Initial pose and velocity and time
-        prev_pose = PoseVelTimestamp(0, 0, 0, 0, 0, 0, 0, 0, 0, t_start)
+        prev_pose = PoseVelTimestamp(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, t_start)
         
         self.servo_handler.move_north()
         
+                
+        # # Test approximately 1 revolution of the northeast omniwheel
+        # start_angle = self.servo_handler.get_angle_position_feedback()[0]
+        # cur_angle = start_angle
+        # while True:
+        #     cur_angle = self.servo_handler.get_angle_position_feedback()[0]
+        #     if cur_angle < start_angle and cur_angle > (start_angle - 0.01):
+        #         return
+
         self.prev_move_dir = None
         
         # Indicates absence of lidar data at any given loop
@@ -81,8 +97,10 @@ class Robot(object):
         
         # while True:
 
-        while (t_elapsed < 4):
-            print 'in loop'
+        #while (t_elapsed < 1.5):
+        while (abs(prev_pose.hdg) < math.radians(45)):
+            cur_time = time.time() # TODO: @ CONSIDER TESTING
+
         # TODO: filter heading values to not fluctuate so quickly based on a
         #       single instance of servo position feedback data?
         # while (abs(prev_pose.hdg) < math.radians(45)):
@@ -90,9 +108,9 @@ class Robot(object):
             # Try to read Lidar data, if new data has come in
             if not self.lidar_queue.empty():
                 lidar_data = self.lidar_queue.get()
-                print '------------------'
-                print 'LIDAR:'
-                print lidar_data.to_string()
+                # print '------------------'
+                # print 'LIDAR:'
+                # print lidar_data.to_string()
                 
             # TODO: Work on this angle position feedback getting. Perhaps there
             # is a notable disparity between servos' feedback frequencies, which
@@ -101,9 +119,9 @@ class Robot(object):
             #time.sleep(0.1)
             if not self.servo_feedback_queue.empty():
                 feedback_data = self.servo_feedback_queue.get()
-                print '------------------'
-                print 'SERVO FEEDBACK:'
-                print feedback_data.to_string()
+                #print '------------------'
+                #print 'SERVO FEEDBACK:'
+                #print feedback_data.to_string()
                 
                 angles = [feedback_data.ne_angle,
                           feedback_data.nw_angle,
@@ -111,15 +129,18 @@ class Robot(object):
                           feedback_data.sw_angle]
             
             
-                delta_angles = self.servo_handler.get_delta_angles(prev_angles,
+                delta_angles = self.servo_handler.get_delta_angles(prev_angles, # TODO: @ CONSIDER TESTING
                                                                     angles)
             
-                cur_time = time.time()
+                #print 'T DIFF (period): '
+                #print time.time() - cur_time
                 cur_pose = self.compute_cur_pose(prev_pose, delta_angles, cur_time)
+                prev_pose = cur_pose
                 
                 print cur_pose.to_string()
             
-            prev_angles = angles
+                prev_angles = angles
+                
             lidar_data = None
             feedback_data = None
             # Exit condition
@@ -137,8 +158,6 @@ class Robot(object):
             # TODO: This is a very naive test of movement based on sensor data
             # if lidar_data is not None:
             #     self.move_to_open_space(lidar_data) # TODO
-
-            prev_pose = cur_pose
 
             
         self.servo_handler.stop_all()
@@ -190,53 +209,68 @@ class Robot(object):
         perhaps. It is likely that this pose calculation will be prone to
         accumulation/estimation errors.
         '''
-        
+
         # Change in time between two pose calculations
         delta_t = t - prev_pose.t
+        #print 'Delta t: ' + str(delta_t)
         
         # 1. Omniwheel angular velocities (signed magnitudes indicating rotation
         #    direction about k axis)
         angular_vels = self.compute_omniwheel_angular_vels(delta_angles,
                                                            delta_t)
+        #print angular_vels
         
-        # (Pretend the w's are omegas for angular velocity)
-        w_A = angular_vels[0] # average angular velocity of NE omniwheel
-        w_B = angular_vels[1] # average angular velocity of NW omniwheel
-        w_C = angular_vels[3] # average angular velocity of SW omniwheel
-        w_D = angular_vels[2] # average angular velocity of SE omniwheel
+        # (Pretend the w's are omegas for angular velocity. Negate these to
+        # align with CCW=positive mathematical convention)
+        w_A = -angular_vels[0] # average angular velocity of NE omniwheel
+        w_B = -angular_vels[1] # average angular velocity of NW omniwheel
+        w_C = -angular_vels[3] # average angular velocity of SW omniwheel
+        w_D = -angular_vels[2] # average angular velocity of SE omniwheel
         # Note that fourth servo (e.g., SE, the one labeled D) makes rigid-body
         # system overconstrained.
-        angular_vels_alphabetical = [w_A, w_B, w_C, w_D]
-        prev_angular_vels = [prev_pose.w_A, prev_pose.w_B, prev_pose.w_C, prev_pose.w_D]
+        
+        #angular_vels_alphabetical = [w_A, w_B, w_C, w_D]
+        #prev_angular_vels = [prev_pose.w_A, prev_pose.w_B, prev_pose.w_C, prev_pose.w_D]
         # TODO: Consider implementing a more robust filter such as a Kalman
         #       filter
-        omegas_passed = self.filter_omegas(prev_angular_vels, angular_vels_alphabetical)
-        if not omegas_passed:
-            return None
+        # omegas_passed = self.filter_omegas(prev_angular_vels, angular_vels_alphabetical)
+        # if not omegas_passed:
+        #     return None
                                                            
         # 2. Using derived rigid-body equations
         # Velocities components of the robot in local coordinates
-        V_er = self.omniwheel_radius/math.sqrt(2) * (w_A - w_B)
+        #V_er = self.omniwheel_radius/math.sqrt(2) * (w_A - w_B)
+        R = self.omniwheel_radius
+        V_er = (2**(1/2)*R*w_A)/4 - (2**(1/2)*R*w_B)/4 - (2**(1/2)*R*w_C)/4 + (2**(1/2)*R*w_D)/4
         #V_eT = self.omniwheel_radius/math.sqrt(2) * (w_A/2 - w_B + w_C/2)
-        V_eT = self.omniwheel_radius/math.sqrt(2) * (w_C - w_B)
+        #V_eT = self.omniwheel_radius/math.sqrt(2) * (w_C - w_B)
+        V_eT = (2**(1/2)*R*w_C)/4 - (2**(1/2)*R*w_B)/4 - (2**(1/2)*R*w_A)/4 + (2**(1/2)*R*w_D)/4
         
         # Angular velocity of entire robot
         # w_v = ((self.omniwheel_radius/math.sqrt(2) * (-w_A/2 - w_C/2))/
         #             self.robot_radius)
-        w_v = (-self.omniwheel_radius*(w_A + w_C))/(2*self.robot_radius)
+        #w_v = (-self.omniwheel_radius*(w_A + w_C))/(2*self.robot_radius)
+        R_v = self.robot_radius
+        # Does this following equation just do an average like we originally had
+        # assumed by intuition / simple analysis? Maybe with extra factors?
+        w_v = - (R*w_A)/(4*R_v) - (R*w_B)/(4*R_v) - (R*w_C)/(4*R_v) - (R*w_D)/(4*R_v)
                 
         # 3. Estimate of the change in heading over time interval delta_t
-        print '###### w_v: ' + str(w_v)
+        #print '###### w_v: ' + str(w_v)
         robot_delta_hdg = w_v * delta_t
         
         # 4. Convert from local to global coordinates with a rotation matrix
         # Average heading estimate
-        robot_average_hdg = prev_pose.hdg + (robot_delta_hdg/2)
-        #robot_average_hdg = prev_pose.hdg + robot_delta_hdg
+        #robot_average_hdg = prev_pose.hdg + (robot_delta_hdg/2)
+        robot_average_hdg = prev_pose.hdg + robot_delta_hdg
+        
+        # Apply filter to raw heading value (robot_average_hdg)
+        # TODO
 
         average_vel_robot_frame = np.matrix(
                         [[float(V_eT)], # like i component in local coords.
                          [float(V_er)]]) # like j component in local coords.
+        #print average_vel_robot_frame
                                                      
         # Convert from local robot coordinates to world coordinates by
         # multiplying a rotation matrix by the robot's velocity in the local
@@ -249,12 +283,12 @@ class Robot(object):
         # Displacement in global frame (s = v_(avg) * t)
         displacement_world_frame = [average_vel_world_frame[0] * delta_t,
                                     average_vel_world_frame[1] * delta_t]
-        
         return PoseVelTimestamp(prev_pose.x + displacement_world_frame[0],
                                 prev_pose.y + displacement_world_frame[1],
                                 average_vel_world_frame[0],
                                 average_vel_world_frame[1],
                                 robot_average_hdg,
+                                w_v,
                                 w_A,
                                 w_B,
                                 w_C,
@@ -340,17 +374,19 @@ class Robot(object):
 #   - u: velocity in x direction (mm/s) in global frame
 #   - v: velocity in y direction (mm/s) in global frame
 #   - heading (radians) in global frame
+#   - w_v: angular velocity of robot (rad/s)
 #   - w_A = average angular velocity of NE omniwheel
 #   - w_B = average angular velocity of NW omniwheel
 #   - w_C = average angular velocity of SW omniwheel
 #   - w_D = average angular velocity of SE omniwheel
 class PoseVelTimestamp(object):
-    def __init__(self, x, y, u, v, hdg, w_A, w_B, w_C, w_D, t):
+    def __init__(self, x, y, u, v, hdg, w_v, w_A, w_B, w_C, w_D, t):
         self.x = x
         self.y = y
         self.u = u
         self.v = v
         self.hdg = hdg
+        self.w_v = w_v
         self.w_A = w_A
         self.w_B = w_B
         self.w_C = w_C
@@ -358,6 +394,7 @@ class PoseVelTimestamp(object):
         self.t = t
         
         self.heading_deg = math.degrees(self.hdg)
+        self.w_v_deg = math.degrees(self.w_v)
         self.w_A_deg = math.degrees(self.w_A)
         self.w_B_deg = math.degrees(self.w_B)
         self.w_C_deg = math.degrees(self.w_C)
@@ -366,22 +403,24 @@ class PoseVelTimestamp(object):
         
     def to_string(self):
         return_str = '----------\n'
-        return_str += 'x: {}\n'
-        return_str += 'y: {}\n'
-        return_str += 'u: {}\n'
-        return_str += 'v: {}\n'
-        return_str += 'heading (deg): {}\n'
-        return_str += 'w_A (deg/s): {}\n'
-        return_str += 'w_B (deg/s): {}\n'
-        return_str += 'w_C (deg/s): {}\n'
-        return_str += 'w_D (deg/s): {}\n'
-        return_str += 't (sec): {}\n'
+        return_str += 'x: {0}\n'
+        return_str += 'y: {1}\n'
+        return_str += 'u: {2}\n'
+        return_str += 'v: {3}\n'
+        return_str += 'heading (deg): {4}\n'
+        return_str += 'w_v (deg/s): {5}\n'
+        return_str += 'w_A (deg/s): {6}\n'
+        return_str += 'w_B (deg/s): {7}\n'
+        return_str += 'w_C (deg/s): {8}\n'
+        return_str += 'w_D (deg/s): {9}\n'
+        return_str += 't (sec): {10}\n'
         return_str += '----------'
         return (return_str.format(self.x, self.y,
                                   self.u, self.v,
-                                  self.heading_deg, self.w_A_deg,
-                                  self.w_B_deg, self.w_C_deg,
-                                  self.w_D_deg, self.t))
+                                  self.heading_deg, self.w_v_deg,
+                                  self.w_A_deg, self.w_B_deg,
+                                  self.w_C_deg, self.w_D_deg,
+                                  self.t))
                 
         
 if __name__ == '__main__':

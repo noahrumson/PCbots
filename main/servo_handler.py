@@ -113,6 +113,7 @@ class ServoHandler():
         
     def move_north(self):
         # Uncorrected northward movement, medium speed
+        print 'MOVING NORTH'
         self.send_signal('ne', -100)
         self.send_signal('nw', 100)
         self.send_signal('se', -100)
