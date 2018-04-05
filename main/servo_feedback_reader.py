@@ -4,14 +4,24 @@ import time
 
 
 class ServoFeedbackReader(threading.Thread):
-    def __init__(self):
-        threading.Thread.__init__(self, servo_handler)
+    def __init__(self, servo_handler):
+        threading.Thread.__init__(self)
         self.daemon = True
         self.servo_handler = servo_handler
         self.servo_feedback_queue = Queue.Queue()
         self.prev_feedback_data = None
                                                    
     def get_data(self):
+        '''
+        Return servo position feedback in packets of four. Only process
+        position, etc., when we get new position feedback from each servo. Note
+        that with the current implementation of this method, this only works if
+        all four servos are being driven and are expected to produce new
+        position feedback values. Another possible way to implement this would
+        be to sleep until new values are pretty much guaranteed to appear,
+        based on the frequency of the servo position feedback, which is about
+        1 kHz.
+        '''
         
         if self.prev_feedback_data is None:
             angles = self.servo_handler.get_angle_position_feedback()
@@ -27,37 +37,27 @@ class ServoFeedbackReader(threading.Thread):
             sw_angle = angles[3]
             
         else:
-            # Compare new data to previous data
-            # prev_angles = [self.prev_feedback_data.ne_angle,
-            #                self.prev_feedback_data.nw_angle,
-            #                self.prev_feedback_data.se_angle,
-            #                self.prev_feedback_data.sw_angle]
-            # got_all_new_angles = False
-            # while not got_all_new_angles:
-            #     angles = self.servo_handler.get_angle_position_feedback()
-            #     cur_time = time.time()
-            #     for i in range(len(angles)):
-            #         if angles[i] == prev_angles[i]:
-            #             continue
-            #     got_all_new_angles = True
+            # Compare new incoming data to previous data
             
             prev_angles = [self.prev_feedback_data.ne_angle,
                            self.prev_feedback_data.nw_angle,
                            self.prev_feedback_data.se_angle,
                            self.prev_feedback_data.sw_angle]
             new_angles = [None, None, None, None]
-            #got_new_angles_list = [False, False, False, False]
-            #while got_new_angles_list.count(True) < 4:
+
             while None in new_angles:
+                #print new_angles
                 # While at least one of the servos did not receive a new
                 # position feedback angle
+                # TODO: returning a list of 0.0's...
                 angles = self.servo_handler.get_angle_position_feedback()
+                #print angles
                 cur_time = time.time()
                 for i in range(len(angles)):
                     if angles[i] != prev_angles[i]:
                         # Got new feedback data
                         new_angles[i] = (cur_time, angles[i])
-                        #got_new_angles_list[i] = True
+                        
             ne_time, ne_angle = new_angles[0]
             nw_time, nw_angle = new_angles[1]
             se_time, se_angle = new_angles[2]
@@ -69,7 +69,7 @@ class ServoFeedbackReader(threading.Thread):
                                      sw_angle, sw_time)
         
         self.servo_feedback_queue.put(feedback_data)
-        prev_feedback_data = feedback_data
+        self.prev_feedback_data = feedback_data
         
     def run(self):
         # Run the thread

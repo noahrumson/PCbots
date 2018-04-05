@@ -62,9 +62,10 @@ class Robot(object):
         print 'Start of main loop'
         t_elapsed = 0
         t_start = time.time()
-
+        
         # Get initial angular positions of each servo:
         prev_angles = self.servo_handler.get_angle_position_feedback()
+        print prev_angles
         
         # Initial pose and velocity and time
         prev_pose = PoseVelTimestamp(0, 0, 0, 0, 0, 0, 0, 0, 0, t_start)
@@ -73,14 +74,14 @@ class Robot(object):
         
         self.prev_move_dir = None
         
-        lidar_data = None # indicates absence of lidar data at any given loop
+        # Indicates absence of lidar data at any given loop
+        lidar_data = None
+        # Indicates absence of servo position feedback data at any given loop
+        feedback_data = None
+        
         # while True:
-        num_loops = 0
-        num_zeroes = 0
+
         while (t_elapsed < 4):
-            print 'num_loops: ' + str(num_loops)
-            print 'num_zeroes: ' + str(num_zeroes)
-            num_loops += 1
         # TODO: filter heading values to not fluctuate so quickly based on a
         #       single instance of servo position feedback data?
         # while (abs(prev_pose.hdg) < math.radians(45)):
@@ -91,35 +92,39 @@ class Robot(object):
                 print '------------------'
                 print 'LIDAR:'
                 print lidar_data.to_string()
-            # TODO: Consider getting angle position feedback in a separate
-            # thread, especially if we are waiting to process the data until we
-            # get a new position feedback from each servo...
-            angles = self.servo_handler.get_angle_position_feedback()
-            # angles = self.get_new_angle_position_feedbacks(prev_angles)
-            
+                
             # TODO: Work on this angle position feedback getting. Perhaps there
             # is a notable disparity between servos' feedback frequencies, which
             # would probably need to be accounted for in a more sophisticated
             # manner...
             #time.sleep(0.1)
-            angles = self.servo_handler.get_angle_position_feedback()
-            delta_angles = self.servo_handler.get_delta_angles(prev_angles,
-                                                                   angles)
-            if 0.0 in delta_angles:
-                num_zeroes += 1
+            if not self.servo_feedback_queue.empty():
+                feedback_data = self.servo_feedback_queue.get()
+                print '------------------'
+                print 'SERVO FEEDBACK:'
+                print feedback_data.to_string()
+                
+                angles = [feedback_data.ne_angle,
+                          feedback_data.nw_angle,
+                          feedback_data.se_angle,
+                          feedback_data.sw_angle]
             
-            cur_time = time.time()
-            cur_pose = self.compute_cur_pose(prev_pose, delta_angles, cur_time)
+            
+                delta_angles = self.servo_handler.get_delta_angles(prev_angles,
+                                                                    angles)
+            
+                cur_time = time.time()
+                cur_pose = self.compute_cur_pose(prev_pose, delta_angles, cur_time)
+                
+                print cur_pose.to_string()
             
             prev_angles = angles
             lidar_data = None
+            feedback_data = None
             # Exit condition
             t_elapsed = cur_time - t_start
             
-            if cur_pose is None:
-                print 'Continued'
-                continue
-            print cur_pose.to_string()
+            
             
             # TODO: should heading be error-corrected in a PID control loop?
             # Ideally, we want to keep a constant heading and simply translate
@@ -136,35 +141,6 @@ class Robot(object):
 
             
         self.servo_handler.stop_all()
-        
-    def get_new_angle_position_feedbacks(self, prev_angles):
-        '''
-        Return servo position feedback in packets of four. Only process
-        position, etc., when we get new position feedback from each servo. Note
-        that with the current implementation of this method, this only works if
-        all four servos are being driven and are expected to produce new
-        position feedback values. Another possible way to implement this would
-        be to sleep until new values are pretty much guaranteed to appear,
-        based on the frequency of the servo position feedback, which is about
-        1 kHz.
-        '''
-        # angles = self.servo_handler.get_angle_position_feedback()
-        # final_angles = [None, None, None, None]
-        # got_all_new_angles = False
-        # print 'Starting to get new angle position feedbacks'
-        # while not got_all_new_angles:
-        #     got_all_new_angles = True
-        #     for num, angle in enumerate(angles):
-        #         if angle != prev_angles[num]:
-        #             # Got a new position feedback value
-        #             final_angles[num] = angle
-        #         else:
-        #             got_all_new_angles = False
-        # print 'Got new angle position feedbacks'
-        # return final_angles
-        
-        time.sleep(0.05)
-        return self.servo_handler.get_angle_position_feedback()
             
     def compute_cur_pose(self, prev_pose, delta_angles, t):
         '''
