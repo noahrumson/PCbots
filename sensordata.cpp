@@ -114,10 +114,10 @@ extern "C" {
 	double servo_angle_sw() { return feedback_sw.angle_in_revolutions(); }
 	double servo_angle_se() { return feedback_se.angle_in_revolutions(); }
 
-	int lidar_distance_north() { return get_distance(LIDAR_NORTH); }
-	int lidar_distance_west() { return get_distance(LIDAR_WEST); }
-	int lidar_distance_south() { return get_distance(LIDAR_SOUTH); }
-	int lidar_distance_east() { return get_distance(LIDAR_EAST); }
+	int lidar_distance_north() { return get_distance(lidar_north); }
+	int lidar_distance_west() { return get_distance(lidar_west); }
+	int lidar_distance_south() { return get_distance(lidar_south); }
+	int lidar_distance_east() { return get_distance(lidar_east); }
 
 	void terminate() { pigpio_stop(pi_handle); }
 }
