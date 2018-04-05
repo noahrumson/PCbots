@@ -1,19 +1,20 @@
 /*
-	Exposes these functions:
-		void init()				-- call this at the start
-		double servo_angle_ne()	-- returns angle of ne servo in revolutions (radians / 2pi)
-		double servo_angle_nw()	-- returns angle of nw servo in revolutions (radians / 2pi)
-		double servo_angle_sw()	-- returns angle of sw servo in revolutions (radians / 2pi)
-		double servo_angle_se()	-- returns angle of se servo in revolutions (radians / 2pi)
-		void terminate()		-- call before exiting
+Exposes these functions:
+	void init()				-- call this at the start
+	double servo_angle_ne()	-- returns angle of ne servo in revolutions (radians / 2pi)
+	double servo_angle_nw()	-- returns angle of nw servo in revolutions (radians / 2pi)
+	double servo_angle_sw()	-- returns angle of sw servo in revolutions (radians / 2pi)
+	double servo_angle_se()	-- returns angle of se servo in revolutions (radians / 2pi)
+	void terminate()		-- call before exiting
 */
 
-#include "pigpio.h"
+#include "pigpiod_if2.h"
 
 constexpr double DUTY_CYCLE_MIN = 0.029;
 constexpr double DUTY_CYCLE_MAX = 0.971;
 
 constexpr int SERVO_FEEDBACK_PERIOD = 990;	//1e6 / 910; 990 works better for some reason
+//constexpr int SERVO_FEEDBACK_PERIOD = 910;	//1e6 / 910; 990 works better for some reason
 
 constexpr int SERVO_OUTPUT_NE = 4;
 constexpr int SERVO_OUTPUT_NW = 17;
@@ -44,42 +45,45 @@ struct servo_feedback_reader
 
 double servo_feedback_reader::angle_in_revolutions() const
 {
-	double duty_cycle = (double) last_pulse_width / SERVO_FEEDBACK_PERIOD;
+	double duty_cycle = (double)last_pulse_width / SERVO_FEEDBACK_PERIOD;
 	duty_cycle = clamp(duty_cycle, DUTY_CYCLE_MIN, DUTY_CYCLE_MAX);
 	return (duty_cycle - DUTY_CYCLE_MIN) / (DUTY_CYCLE_MAX - DUTY_CYCLE_MIN);
 }
-
+#include <iostream>
 template<servo_feedback_reader& reader>
-void feedback_state_changed(int gpio, int level, uint32_t tick)
+void feedback_state_changed(int pi, unsigned int gpio, unsigned int level, uint32_t tick)
 {
+	static int counter = 0;
 	if (level == 0) {
 		reader.last_pulse_width = tick - reader.last_tick;
 	}
 	reader.last_tick = tick;
+	std::cout << "state changed " << ++counter << " times\n";
 }
 
 servo_feedback_reader feedback_ne;
 servo_feedback_reader feedback_nw;
 servo_feedback_reader feedback_sw;
 servo_feedback_reader feedback_se;
+int pi_handle;
 
 extern "C" void init()
 {
-	gpioInitialise();
-	gpioSetMode(SERVO_OUTPUT_NE, PI_OUTPUT);
-	gpioSetMode(SERVO_OUTPUT_NW, PI_OUTPUT);
-	gpioSetMode(SERVO_OUTPUT_SW, PI_OUTPUT);
-	gpioSetMode(SERVO_OUTPUT_SE, PI_OUTPUT);
+	pi_handle = pigpio_start(0, 0);
+	set_mode(pi_handle, SERVO_OUTPUT_NE, PI_OUTPUT);
+	set_mode(pi_handle, SERVO_OUTPUT_NW, PI_OUTPUT);
+	set_mode(pi_handle, SERVO_OUTPUT_SW, PI_OUTPUT);
+	set_mode(pi_handle, SERVO_OUTPUT_SE, PI_OUTPUT);
 
-	gpioSetMode(SERVO_INPUT_NE, PI_INPUT);
-	gpioSetMode(SERVO_INPUT_NW, PI_INPUT);
-	gpioSetMode(SERVO_INPUT_SW, PI_INPUT);
-	gpioSetMode(SERVO_INPUT_SE, PI_INPUT);
+	set_mode(pi_handle, SERVO_INPUT_NE, PI_INPUT);
+	set_mode(pi_handle, SERVO_INPUT_NW, PI_INPUT);
+	set_mode(pi_handle, SERVO_INPUT_SW, PI_INPUT);
+	set_mode(pi_handle, SERVO_INPUT_SE, PI_INPUT);
 
-	gpioSetAlertFunc(SERVO_INPUT_NE, feedback_state_changed<feedback_ne>);
-	gpioSetAlertFunc(SERVO_INPUT_NW, feedback_state_changed<feedback_nw>);
-	gpioSetAlertFunc(SERVO_INPUT_SW, feedback_state_changed<feedback_sw>);
-	gpioSetAlertFunc(SERVO_INPUT_SE, feedback_state_changed<feedback_se>);
+	callback(pi_handle, SERVO_INPUT_NE, EITHER_EDGE, feedback_state_changed<feedback_ne>);
+	callback(pi_handle, SERVO_INPUT_NW, EITHER_EDGE, feedback_state_changed<feedback_nw>);
+	callback(pi_handle, SERVO_INPUT_SW, EITHER_EDGE, feedback_state_changed<feedback_sw>);
+	callback(pi_handle, SERVO_INPUT_SE, EITHER_EDGE, feedback_state_changed<feedback_se>);
 }
 
 extern "C" double servo_angle_ne() { return feedback_ne.angle_in_revolutions(); }
@@ -87,4 +91,4 @@ extern "C" double servo_angle_nw() { return feedback_nw.angle_in_revolutions(); 
 extern "C" double servo_angle_sw() { return feedback_sw.angle_in_revolutions(); }
 extern "C" double servo_angle_se() { return feedback_se.angle_in_revolutions(); }
 
-extern "C" void terminate() { gpioTerminate(); }
+extern "C" void terminate() { pigpio_stop(pi_handle); }
