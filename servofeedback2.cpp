@@ -45,11 +45,11 @@ struct servo_feedback_reader
 	uint32_t last_pulse_ended;
 	double duty_cycle;
 
-	double angle_in_revolutions() const;
+	double angle_in_revolutions();
 };
 
 #include <iostream>
-double servo_feedback_reader::angle_in_revolutions() const
+double servo_feedback_reader::angle_in_revolutions()
 {
 	std::cout << "new computed: " << duty_cycle << ", ";
 	std::cout << "old computed: " << (double)last_pulse_width / SERVO_FEEDBACK_PERIOD << std::endl;
