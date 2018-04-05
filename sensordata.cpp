@@ -31,10 +31,10 @@ constexpr int SERVO_INPUT_NW = 9;
 constexpr int SERVO_INPUT_SW = 11;
 constexpr int SERVO_INPUT_SE = 5;
 
-constexpr int LIDAR_NORTH	= 22;
-constexpr int LIDAR_WEST	= 21;
-constexpr int LIDAR_SOUTH	= 24;
-constexpr int LIDAR_EAST	= 23;
+constexpr int LIDAR_NORTH	= 0x22;
+constexpr int LIDAR_WEST	= 0x21;
+constexpr int LIDAR_SOUTH	= 0x24;
+constexpr int LIDAR_EAST	= 0x23;
 
 double clamp(double x, double min, double max)
 {
@@ -109,24 +109,16 @@ extern "C" {
 		set_mode(pi_handle, 26, PI_OUTPUT);
 
 		gpio_write(pi_handle, 13, 1);
-		//lidar_north = vl6180_initialise_address(1, LIDAR_NORTH);
-		lidar_north = vl6180_initialise(1);
-		vl6180_change_addr(lidar_north, LIDAR_NORTH);
+		lidar_north = vl6180_initialise_address(1, LIDAR_NORTH);
 
 		gpio_write(pi_handle, 6, 1);
-//		lidar_west = vl6180_initialise_address(1, LIDAR_WEST);
-		lidar_west = vl6180_initialise(1);
-		vl6180_change_addr(lidar_west, LIDAR_WEST);
+		lidar_west = vl6180_initialise_address(1, LIDAR_WEST);
 
 		gpio_write(pi_handle, 26, 1);
-//		lidar_south = vl6180_initialise_address(1, LIDAR_SOUTH);
-		lidar_south = vl6180_initialise(1);
-		vl6180_change_addr(lidar_south, LIDAR_SOUTH);
+		lidar_south = vl6180_initialise_address(1, LIDAR_SOUTH);
 
 		gpio_write(pi_handle, 19, 1);
-//		lidar_east = vl6180_initialise_address(1, LIDAR_EAST);
-		lidar_east = vl6180_initialise(1);
-		vl6180_change_addr(lidar_east, LIDAR_EAST);
+		lidar_east = vl6180_initialise_address(1, LIDAR_EAST);
 	}
 
 	double servo_angle_ne() { return feedback_ne.angle_in_revolutions(); }
