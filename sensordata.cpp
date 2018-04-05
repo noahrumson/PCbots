@@ -76,6 +76,12 @@ servo_feedback_reader feedback_ne;
 servo_feedback_reader feedback_nw;
 servo_feedback_reader feedback_sw;
 servo_feedback_reader feedback_se;
+
+vl6180 lidar_north;
+vl6180 lidar_west;
+vl6180 lidar_south;
+vl6180 lidar_east;
+
 int pi_handle;
 
 extern "C" {
@@ -97,10 +103,10 @@ extern "C" {
 		callback(pi_handle, SERVO_INPUT_SW, EITHER_EDGE, feedback_state_changed<feedback_sw>);
 		callback(pi_handle, SERVO_INPUT_SE, EITHER_EDGE, feedback_state_changed<feedback_se>);
 
-		vl6180 lidar_north = vl6180_initialise_address(1, LIDAR_NORTH);
-		vl6180 lidar_west = vl6180_initialise_address(1, LIDAR_WEST);
-		vl6180 lidar_south = vl6180_initialise_address(1, LIDAR_SOUTH);
-		vl6180 lidar_east = vl6180_initialise_address(1, LIDAR_EAST);
+		lidar_north = vl6180_initialise_address(1, LIDAR_NORTH);
+		lidar_west = vl6180_initialise_address(1, LIDAR_WEST);
+		lidar_south = vl6180_initialise_address(1, LIDAR_SOUTH);
+		lidar_east = vl6180_initialise_address(1, LIDAR_EAST);
 	}
 
 	double servo_angle_ne() { return feedback_ne.angle_in_revolutions(); }
