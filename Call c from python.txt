@@ -1,6 +1,6 @@
 to compile c:
 g++ -std=c++11 -I -fpic -c [files.cpp] -o [files.o]
-g++ -std=c++11 -shared -o lib[xxx].so [files.o] -lpigpiod_if2 -lrt
+g++ -std=c++11 -shared -o lib[xxx].so [files.o] -lpigpiod_if2 -lvl1680_pi -lrt
 
 in python:
 import ctypes
