@@ -87,7 +87,7 @@ int pi_handle;
 extern "C" {
 	void init()
 	{
-		pi_handle = pigpio_start(0, "7777");
+		pi_handle = pigpio_start(0, 0);
 		set_mode(pi_handle, SERVO_OUTPUT_NE, PI_OUTPUT);
 		set_mode(pi_handle, SERVO_OUTPUT_NW, PI_OUTPUT);
 		set_mode(pi_handle, SERVO_OUTPUT_SW, PI_OUTPUT);
