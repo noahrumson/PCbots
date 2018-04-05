@@ -109,16 +109,24 @@ extern "C" {
 		set_mode(pi_handle, 26, PI_OUTPUT);
 
 		gpio_write(pi_handle, 13, 1);
-		lidar_north = vl6180_initialise_address(1, LIDAR_NORTH);
+		//lidar_north = vl6180_initialise_address(1, LIDAR_NORTH);
+		lidar_north = vl6180_initialise(1);
+		vl6180_change_addr(lidar_north, LIDAR_NORTH);
 
 		gpio_write(pi_handle, 6, 1);
-		lidar_west = vl6180_initialise_address(1, LIDAR_WEST);
+//		lidar_west = vl6180_initialise_address(1, LIDAR_WEST);
+		lidar_west = vl6180_initialise(1);
+		vl6180_change_addr(lidar_west, LIDAR_WEST);
 
 		gpio_write(pi_handle, 26, 1);
-		lidar_south = vl6180_initialise_address(1, LIDAR_SOUTH);
+//		lidar_south = vl6180_initialise_address(1, LIDAR_SOUTH);
+		lidar_south = vl6180_initialise(1);
+		vl6180_change_addr(lidar_south, LIDAR_SOUTH);
 
 		gpio_write(pi_handle, 19, 1);
-		lidar_east = vl6180_initialise_address(1, LIDAR_EAST);
+//		lidar_east = vl6180_initialise_address(1, LIDAR_EAST);
+		lidar_east = vl6180_initialise(1);
+		vl6180_change_addr(lidar_east, LIDAR_EAST);
 	}
 
 	double servo_angle_ne() { return feedback_ne.angle_in_revolutions(); }
