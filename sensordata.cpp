@@ -83,7 +83,7 @@ vl6180 lidar_south;
 vl6180 lidar_east;
 
 int pi_handle;
-
+#include <iostream>
 extern "C" {
 	void init()
 	{
@@ -107,6 +107,19 @@ extern "C" {
 		lidar_west = vl6180_initialise_address(1, LIDAR_WEST);
 		lidar_south = vl6180_initialise_address(1, LIDAR_SOUTH);
 		lidar_east = vl6180_initialise_address(1, LIDAR_EAST);
+
+		if (lidar_north < 0) {
+			std::cout << "Error initializing lidar north\n;
+		}
+		if (lidar_south < 0) {
+			std::cout << "Error initializing lidar south\n;
+		}
+		if (lidar_west < 0) {
+			std::cout << "Error initializing lidar west\n;
+		}
+		if (lidar_east < 0) {
+			std::cout << "Error initializing lidar east\n;
+		}
 	}
 
 	double servo_angle_ne() { return feedback_ne.angle_in_revolutions(); }
