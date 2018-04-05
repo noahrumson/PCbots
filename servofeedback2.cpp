@@ -48,11 +48,8 @@ struct servo_feedback_reader
 	double angle_in_revolutions();
 };
 
-#include <iostream>
 double servo_feedback_reader::angle_in_revolutions()
 {
-	std::cout << "new computed: " << duty_cycle << ", ";
-	std::cout << "old computed: " << (double)last_pulse_width / SERVO_FEEDBACK_PERIOD << std::endl;
 	duty_cycle = clamp(duty_cycle, DUTY_CYCLE_MIN, DUTY_CYCLE_MAX);
 	return (duty_cycle - DUTY_CYCLE_MIN) / (DUTY_CYCLE_MAX - DUTY_CYCLE_MIN);
 }
