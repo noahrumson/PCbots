@@ -103,9 +103,21 @@ extern "C" {
 		callback(pi_handle, SERVO_INPUT_SW, EITHER_EDGE, feedback_state_changed<feedback_sw>);
 		callback(pi_handle, SERVO_INPUT_SE, EITHER_EDGE, feedback_state_changed<feedback_se>);
 
+		set_mode(pi_handle, 6, PI_OUTPUT);
+		set_mode(pi_handle, 13, PI_OUTPUT);
+		set_mode(pi_handle, 19, PI_OUTPUT);
+		set_mode(pi_handle, 26, PI_OUTPUT);
+
+		gpio_write(pi_handle, 13, 1);
 		lidar_north = vl6180_initialise_address(1, LIDAR_NORTH);
+
+		gpio_write(pi_handle, 6, 1);
 		lidar_west = vl6180_initialise_address(1, LIDAR_WEST);
+
+		gpio_write(pi_handle, 26, 1);
 		lidar_south = vl6180_initialise_address(1, LIDAR_SOUTH);
+
+		gpio_write(pi_handle, 19, 1);
 		lidar_east = vl6180_initialise_address(1, LIDAR_EAST);
 	}
 
@@ -114,7 +126,7 @@ extern "C" {
 	double servo_angle_sw() { return feedback_sw.angle_in_revolutions(); }
 	double servo_angle_se() { return feedback_se.angle_in_revolutions(); }
 
-	int lidar_distance_north() { std::cout << "here" << std::endl; get_distance(lidar_north); }
+	int lidar_distance_north() { return get_distance(lidar_north); }
 	int lidar_distance_west() { return get_distance(lidar_west); }
 	int lidar_distance_south() { return get_distance(lidar_south); }
 	int lidar_distance_east() { return get_distance(lidar_east); }
