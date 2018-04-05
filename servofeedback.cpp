@@ -1,11 +1,11 @@
 /*
 Exposes these functions:
-	void init()				-- call this at the start
-	double servo_angle_ne()	-- returns angle of ne servo in revolutions (radians / 2pi)
-	double servo_angle_nw()	-- returns angle of nw servo in revolutions (radians / 2pi)
-	double servo_angle_sw()	-- returns angle of sw servo in revolutions (radians / 2pi)
-	double servo_angle_se()	-- returns angle of se servo in revolutions (radians / 2pi)
-	void terminate()		-- call before exiting
+void init()				-- call this at the start
+double servo_angle_ne()	-- returns angle of ne servo in revolutions (radians / 2pi)
+double servo_angle_nw()	-- returns angle of nw servo in revolutions (radians / 2pi)
+double servo_angle_sw()	-- returns angle of sw servo in revolutions (radians / 2pi)
+double servo_angle_se()	-- returns angle of se servo in revolutions (radians / 2pi)
+void terminate()		-- call before exiting
 */
 
 #include "pigpiod_if2.h"
@@ -14,7 +14,6 @@ constexpr double DUTY_CYCLE_MIN = 0.029;
 constexpr double DUTY_CYCLE_MAX = 0.971;
 
 constexpr int SERVO_FEEDBACK_PERIOD = 990;	//1e6 / 910; 990 works better for some reason
-//constexpr int SERVO_FEEDBACK_PERIOD = 910;	//1e6 / 910; 990 works better for some reason
 
 constexpr int SERVO_OUTPUT_NE = 4;
 constexpr int SERVO_OUTPUT_NW = 17;
@@ -37,28 +36,29 @@ double clamp(double x, double min, double max)
 
 struct servo_feedback_reader
 {
-	uint32_t last_tick;
-	uint32_t last_pulse_width;
+	uint32_t last_pulse_started;
+	uint32_t last_pulse_ended;
+	double duty_cycle;
 
-	double angle_in_revolutions() const;
+	double angle_in_revolutions();
 };
 
-double servo_feedback_reader::angle_in_revolutions() const
+double servo_feedback_reader::angle_in_revolutions()
 {
-	double duty_cycle = (double)last_pulse_width / SERVO_FEEDBACK_PERIOD;
 	duty_cycle = clamp(duty_cycle, DUTY_CYCLE_MIN, DUTY_CYCLE_MAX);
 	return (duty_cycle - DUTY_CYCLE_MIN) / (DUTY_CYCLE_MAX - DUTY_CYCLE_MIN);
 }
-#include <iostream>
+
 template<servo_feedback_reader& reader>
 void feedback_state_changed(int pi, unsigned int gpio, unsigned int level, uint32_t tick)
 {
-	static int counter = 0;
-	if (level == 0) {
-		reader.last_pulse_width = tick - reader.last_tick;
+	if (level == 1) {
+		reader.duty_cycle = (double) (reader.last_pulse_ended - reader.last_pulse_started) / (tick - reader.last_pulse_started);
+		reader.last_pulse_started = tick;
 	}
-	reader.last_tick = tick;
-	std::cout << "state changed " << ++counter << " times\n";
+	else if (level == 0) {
+		reader.last_pulse_ended = tick;
+	}
 }
 
 servo_feedback_reader feedback_ne;
