@@ -82,6 +82,7 @@ class Robot(object):
         # while True:
 
         while (t_elapsed < 4):
+            print 'in loop'
         # TODO: filter heading values to not fluctuate so quickly based on a
         #       single instance of servo position feedback data?
         # while (abs(prev_pose.hdg) < math.radians(45)):
@@ -161,16 +162,16 @@ class Robot(object):
                interval delta_t
             2. Use the derived rigid-body equations that describe this system.
                These solution equations include three equations of interest:
-                    1) V_er = self.omniwheel_radius/sqrt(2) * (w_A - w_B),
+                    1) V_er = self.omniwheel_radius/math.sqrt(2) * (w_A - w_B),
                         where V_er is the component of the robot's velocity in
                         the e_r (forward) direction (local robot coordinates),
                         and where w_A, for example, is the angular velocity of
                         omniwheel A (northeast omniwheel)
-                    2) V_eT = self.omniwheel_radius/sqrt(2) *
-                              (w_A/2 - w_B + w_C/2), where V_eT is the component
+                    2) V_eT = self.omniwheel_radius/math.sqrt(2) * (w_C - w_B),
+                              where V_eT is the component
                               of the robot's velocity in the e_T (sideways)
                               direction (local robot coordinates)
-                    3) w_v = self.omniwheel_radius/sqrt(2) * (-w_A/2 - w_C/2),
+                    3) w_v = (-self.omniwheel_radius*(w_A + w_C))/(2*self.robot_radius),
                         where w_v is the angular velocity of the robot
             3. Multiply w_v by delta_t to obtain an estimate of the change in
                heading of the robot over the time interval delta_t
@@ -387,7 +388,8 @@ if __name__ == '__main__':
     robot = Robot()
     try:
         robot.mainloop()
-    except KeyboardInterrupt:
+    except KeyboardInterrupt as e:
+        print e
         robot.shutdown()
     finally:
         print 'Terminating robot.py program'
