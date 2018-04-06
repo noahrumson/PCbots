@@ -50,7 +50,7 @@ class LidarReader(threading.Thread):
     #     GPIO.output(26, 1)
                                                    
     def get_data(self):
-        print 'GETTING LIDAR DATA'
+    #    print 'GETTING LIDAR DATA'
         # Keep track of timestamps corresponding to data
         
 
@@ -73,7 +73,7 @@ class LidarReader(threading.Thread):
         #                       (south_time, south_dist),
         #                       (east_time, east_dist),
         #                       (west_time, west_dist)])
-        print 'DONE GETTING LIDAR DATA'
+    #    print 'DONE GETTING LIDAR DATA'
         self.lidar_queue.put(lidar_data)
         
     def run(self):
@@ -93,6 +93,30 @@ class LidarData(object):
         self.east_dist = east_dist
         self.west_time = west_time
         self.west_dist = west_dist
+
+    def is_north_wall(self):
+        return self.north_dist <= 100
+
+    def is_south_wall(self):
+        return self.south_dist <= 100
+
+    def is_east_wall(self):
+        return self.east_dist <= 100
+
+    def is_west_wall(self):
+        return self.west_dist <= 100
+
+    def too_close_to_north(self):
+        return self.north_dist <= 40
+
+    def too_close_to_south(self):
+        return self.south_dist <= 40
+
+    def too_close_to_east(self):
+        return self.east_dist <= 40
+
+    def too_close_to_west(self):
+        return self.west_dist <= 40
         
     def to_string(self):
         return_format = '-----\n{dir}\n\tDistance (mm): {dist}\n\tTime (s): {t}\n'
