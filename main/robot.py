@@ -66,12 +66,11 @@ class Robot(object):
         self.lidar_queue = self.lreader.lidar_queue
         self.servo_feedback_queue = self.servo_feedback_reader.servo_feedback_queue
         # At a distance of 60 mm, robot is close to wall
-        self.NEAR_WALL_THRESH = 60
+        self.NEAR_WALL_THRESH = 65
         self.TOUCHING_WALL_THRESH = 30
         # NOTE: If the robot is perfectly centered and oriented straight in a
         #       square, then a lidar's distance to a corresponding neighboring
-        #       wall is about 42 mm (calculation based on 3D CAD model
-        #       dimensions and roughly verified by observation of lidar readout)
+        #       wall is about 45 mm (based on experimental lidar readout)
         # NOTE: Upper bound of servo range is about 100 mm
         self.motion_list = [self.servo_handler.move_north,
                             self.servo_handler.move_south,
@@ -164,6 +163,7 @@ class Robot(object):
                 elif (self.servo_handler.direction == ServoHandler.DIRECTION_EAST and
                     lidar_data.east_dist <= self.NEAR_WALL_THRESH and not lidar_data.is_south_wall()):
                     self.servo_handler.move_south()
+                #print lidar_data.to_string()
                 self.adjust_servos_from_lidar(lidar_data)
                 #print '------------------'
                # print 'LIDAR:'
@@ -189,6 +189,7 @@ class Robot(object):
                                                                     angles)
                 for x in delta_angles:
                     if abs(x) <= 0.0001:
+                        pass
                         print "Updating too fast"
                 #print 'T DIFF (period): '
                 #print time.time() - cur_time
@@ -256,45 +257,40 @@ class Robot(object):
         '''
         
         if lidar_data.is_south_wall() and lidar_data.is_north_wall():
-            if (lidar_data.south_dist - lidar_data.north_dist)/math.cos(self.cur_pose.hdg) >= 15 * math.cos(self.cur_pose.hdg):
+            if (lidar_data.north_dist <= 40/((math.cos(self.cur_pose.hdg))**2)):
                 dir_sign = 1
                 if (self.servo_handler.direction == ServoHandler.DIRECTION_EAST):
                     dir_sign = -1
                 elif (self.servo_handler.direction == ServoHandler.DIRECTION_WEST):
                     dir_sign = 1
-                self.target_hdg = dir_sign * K_p * (lidar_data.south_dist - lidar_data.north_dist)
+                self.target_hdg = dir_sign * K_p * (1/lidar_data.north_dist)
+            elif (lidar_data.south_dist <= 40/((math.cos(self.cur_pose.hdg))**2)):
+                dir_sign = 1
+                if (self.servo_handler.direction == ServoHandler.DIRECTION_EAST):
+                    dir_sign = 1
+                elif (self.servo_handler.direction == ServoHandler.DIRECTION_WEST):
+                    dir_sign = -1
+                self.target_hdg = dir_sign * K_p * (1/lidar_data.south_dist)
             elif abs((lidar_data.south_dist - lidar_data.north_dist)/math.cos(self.cur_pose.hdg)) <= 5:
+                # Wall-avoidance correction brought the robot more toward the center, so readjust target heading
                 self.target_hdg = 0
-        if lidar_data.is_east_wall() and lidar_data.is_west_wall():
-            if (lidar_data.east_dist - lidar_data.west_dist)/math.cos(self.cur_pose.hdg) >= 15 * math.cos(self.cur_pose.hdg):
+        elif lidar_data.is_east_wall() and lidar_data.is_west_wall():
+            if (lidar_data.west_dist <= 40/((math.cos(self.cur_pose.hdg))**2)):
                 # Which direction to set the target heading depends on direction of motion
                 dir_sign = 1
                 if (self.servo_handler.direction == ServoHandler.DIRECTION_NORTH):
                     dir_sign = -1
                 elif (self.servo_handler.direction == ServoHandler.DIRECTION_SOUTH):
                     dir_sign = 1
-                self.target_hdg = dir_sign * K_p * (lidar_data.east_dist - lidar_data.west_dist)
-            elif abs((lidar_data.east_dist - lidar_data.west_dist)/math.cos(self.cur_pose.hdg)) <= 5:
-                self.target_hdg = 0
-        if lidar_data.is_south_wall() and lidar_data.is_north_wall():
-            if (lidar_data.north_dist - lidar_data.south_dist)/math.cos(self.cur_pose.hdg) >= 15 * math.cos(self.cur_pose.hdg):
-                dir_sign = 1
-                if (self.servo_handler.direction == ServoHandler.DIRECTION_EAST):
-                    dir_sign = 1
-                elif (self.servo_handler.direction == ServoHandler.DIRECTION_WEST):
-                    dir_sign = -1
-                self.target_hdg = dir_sign * K_p * (lidar_data.north_dist - lidar_data.south_dist)
-            elif abs((lidar_data.north_dist - lidar_data.south_dist)/math.cos(self.cur_pose.hdg)) <= 5:
-                self.target_hdg = 0
-        if lidar_data.is_west_wall() and lidar_data.is_east_wall():
-            if (lidar_data.west_dist - lidar_data.east_dist)/math.cos(self.cur_pose.hdg) >= 15 * math.cos(self.cur_pose.hdg):
+                self.target_hdg = dir_sign * K_p * (1/lidar_data.west_dist)
+            elif (lidar_data.east_dist <= 40/((math.cos(self.cur_pose.hdg))**2)):
                 dir_sign = 1
                 if (self.servo_handler.direction == ServoHandler.DIRECTION_NORTH):
                     dir_sign = 1
                 elif (self.servo_handler.direction == ServoHandler.DIRECTION_SOUTH):
                     dir_sign = -1
-                self.target_hdg = dir_sign * K_p * (lidar_data.west_dist - lidar_data.east_dist)
-            elif abs((lidar_data.west_dist - lidar_data.east_dist)/math.cos(self.cur_pose.hdg)) <= 5:
+                self.target_hdg = dir_sign * K_p * (1/lidar_data.east_dist)
+            elif abs((lidar_data.east_dist - lidar_data.west_dist)/math.cos(self.cur_pose.hdg)) <= 5:
                 self.target_hdg = 0
 
         
