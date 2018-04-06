@@ -13,6 +13,7 @@ import RPi.GPIO as GPIO
 from lidar_reader import LidarReader
 from servo_handler import ServoHandler
 from servo_feedback_reader import ServoFeedbackReader
+import button_led_handler
 
 # To access Raspberry Pi's GPIO pins:
 #import RPi.GPIO as GPIO
@@ -114,7 +115,7 @@ class Robot(object):
         prev_angles = self.servo_handler.get_angle_position_feedback()
                 
         # Initial pose and velocity and time
-        prev_pose = PoseVelTimestamp(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, t_start)
+        self.prev_pose = PoseVelTimestamp(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, t_start)
         
         self.servo_handler.move_north()
         
@@ -144,24 +145,24 @@ class Robot(object):
 
             # TODO: filter heading values to not fluctuate so quickly based on a
             #       single instance of servo position feedback data?
-            # while (abs(prev_pose.hdg) < math.radians(45)):
+            # while (abs(self.prev_pose.hdg) < math.radians(45)):
             # lidar_data = self.lidar_queue.get(block=True)
             # Try to read Lidar data, if new data has come in
             if not self.lidar_queue.empty():
                 lidar_data = self.lidar_queue.get()
-                if (self.servo_handler.direction == ServoHandler.DIRECTION_NORTH and 
-                    lidar_data.north_dist <= self.NEAR_WALL_THRESH and lidar_data.west_dist > 100):
+                if (self.servo_handler.direction == ServoHandler.DIRECTION_NORTH and
+                    lidar_data.north_dist <= self.NEAR_WALL_THRESH and not lidar_data.is_west_wall()):
                     self.servo_handler.move_west()
-                elif (self.servo_handler.direction == ServoHandler.DIRECTION_NORTH and 
-                      lidar_data.north_dist <= self.NEAR_WALL_THRESH and lidar_data.east_dist > 100):
+                elif (self.servo_handler.direction == ServoHandler.DIRECTION_NORTH and
+                      lidar_data.north_dist <= self.NEAR_WALL_THRESH and not lidar_data.is_east_wall()):
                     self.servo_handler.move_east()
                 elif (self.servo_handler.direction == ServoHandler.DIRECTION_WEST and
-                    lidar_data.west_dist <= self.NEAR_WALL_THRESH and lidar_data.south_dist > 100):
+                    lidar_data.west_dist <= self.NEAR_WALL_THRESH and not lidar_data.is_south_wall()):
                     self.servo_handler.move_south()
                 elif self.servo_handler.direction == ServoHandler.DIRECTION_SOUTH and lidar_data.south_dist <= self.NEAR_WALL_THRESH:
                     self.servo_handler.move_north()
                 elif (self.servo_handler.direction == ServoHandler.DIRECTION_EAST and
-                    lidar_data.east_dist <= self.NEAR_WALL_THRESH and lidar_data.south_dist > 100):
+                    lidar_data.east_dist <= self.NEAR_WALL_THRESH and not lidar_data.is_south_wall()):
                     self.servo_handler.move_south()
                 self.adjust_servos_from_lidar(lidar_data)
                 #print '------------------'
@@ -191,12 +192,12 @@ class Robot(object):
                         print "Updating too fast"
                 #print 'T DIFF (period): '
                 #print time.time() - cur_time
-                cur_pose = self.compute_cur_pose(prev_pose, delta_angles, cur_time)
+                self.cur_pose = self.compute_cur_pose(delta_angles, cur_time)
 
-                self.proportional_adjust_servos(cur_pose)
+                self.proportional_adjust_servos()
 
-                prev_pose = cur_pose
-                print cur_pose.hdg
+                self.prev_pose = self.cur_pose
+                print self.cur_pose.heading_deg
 
                 prev_angles = angles
                 
@@ -220,19 +221,22 @@ class Robot(object):
 
         self.servo_handler.stop_all()
 
-    def proportional_adjust_servos(self, cur_pose):
+    def proportional_adjust_servos(self):
         K_p = 4
         dir = self.servo_handler.direction
         if dir == ServoHandler.DIRECTION_NORTH:
-            self.servo_handler.adjust_signal("sw", (cur_pose.hdg - self.target_hdg) * K_p)
+            self.servo_handler.adjust_signal("sw", (self.cur_pose.hdg - self.target_hdg) * K_p)
         elif dir == ServoHandler.DIRECTION_WEST:
-            self.servo_handler.adjust_signal("se", (cur_pose.hdg - self.target_hdg) * K_p)
+            self.servo_handler.adjust_signal("se", (self.cur_pose.hdg - self.target_hdg) * K_p)
         elif dir == ServoHandler.DIRECTION_SOUTH:
-            self.servo_handler.adjust_signal("ne", (cur_pose.hdg - self.target_hdg) * K_p)
+            self.servo_handler.adjust_signal("ne", (self.cur_pose.hdg - self.target_hdg) * K_p)
         elif dir == ServoHandler.DIRECTION_EAST:
-            self.servo_handler.adjust_signal("nw", (cur_pose.hdg - self.target_hdg) * K_p)
+            self.servo_handler.adjust_signal("nw", (self.cur_pose.hdg - self.target_hdg) * K_p)
 
     def adjust_servos_from_lidar(self, lidar_data):
+        '''
+        Execute wall avoidance based on lidar data
+        '''
         K_p = 0.001
         dir = self.servo_handler.direction
         
@@ -252,28 +256,49 @@ class Robot(object):
         '''
         
         if lidar_data.is_south_wall() and lidar_data.is_north_wall():
-            if lidar_data.south_dist - lidar_data.north_dist >= 15:
-                self.target_hdg = K_p * (lidar_data.south_dist - lidar_data.north_dist)
-            elif abs(lidar_data.south_dist - lidar_data.north_dist) <= 5:
+            if (lidar_data.south_dist - lidar_data.north_dist)/math.cos(self.cur_pose.hdg) >= 15 * math.cos(self.cur_pose.hdg):
+                dir_sign = 1
+                if (self.servo_handler.direction == ServoHandler.DIRECTION_EAST):
+                    dir_sign = -1
+                elif (self.servo_handler.direction == ServoHandler.DIRECTION_WEST):
+                    dir_sign = 1
+                self.target_hdg = dir_sign * K_p * (lidar_data.south_dist - lidar_data.north_dist)
+            elif abs((lidar_data.south_dist - lidar_data.north_dist)/math.cos(self.cur_pose.hdg)) <= 5:
                 self.target_hdg = 0
         if lidar_data.is_east_wall() and lidar_data.is_west_wall():
-            if lidar_data.east_dist - lidar_data.west_dist >= 15:
-                self.target_hdg = -K_p * (lidar_data.east_dist - lidar_data.west_dist)
-            elif abs(lidar_data.east_dist - lidar_data.west_dist) <= 5:
+            if (lidar_data.east_dist - lidar_data.west_dist)/math.cos(self.cur_pose.hdg) >= 15 * math.cos(self.cur_pose.hdg):
+                # Which direction to set the target heading depends on direction of motion
+                dir_sign = 1
+                if (self.servo_handler.direction == ServoHandler.DIRECTION_NORTH):
+                    dir_sign = -1
+                elif (self.servo_handler.direction == ServoHandler.DIRECTION_SOUTH):
+                    dir_sign = 1
+                self.target_hdg = dir_sign * K_p * (lidar_data.east_dist - lidar_data.west_dist)
+            elif abs((lidar_data.east_dist - lidar_data.west_dist)/math.cos(self.cur_pose.hdg)) <= 5:
                 self.target_hdg = 0
         if lidar_data.is_south_wall() and lidar_data.is_north_wall():
-            if lidar_data.north_dist - lidar_data.south_dist >= 15:
-                self.target_hdg = K_p * (lidar_data.north_dist - lidar_data.south_dist)
-            elif abs(lidar_data.north_dist - lidar_data.south_dist) <= 5:
+            if (lidar_data.north_dist - lidar_data.south_dist)/math.cos(self.cur_pose.hdg) >= 15 * math.cos(self.cur_pose.hdg):
+                dir_sign = 1
+                if (self.servo_handler.direction == ServoHandler.DIRECTION_EAST):
+                    dir_sign = 1
+                elif (self.servo_handler.direction == ServoHandler.DIRECTION_WEST):
+                    dir_sign = -1
+                self.target_hdg = dir_sign * K_p * (lidar_data.north_dist - lidar_data.south_dist)
+            elif abs((lidar_data.north_dist - lidar_data.south_dist)/math.cos(self.cur_pose.hdg)) <= 5:
                 self.target_hdg = 0
         if lidar_data.is_west_wall() and lidar_data.is_east_wall():
-            if lidar_data.west_dist - lidar_data.east_dist >= 15:
-                self.target_hdg = K_p * (lidar_data.west_dist - lidar_data.east_dist)
-            elif abs(lidar_data.west_dist - lidar_data.east_dist) <= 5:
+            if (lidar_data.west_dist - lidar_data.east_dist)/math.cos(self.cur_pose.hdg) >= 15 * math.cos(self.cur_pose.hdg):
+                dir_sign = 1
+                if (self.servo_handler.direction == ServoHandler.DIRECTION_NORTH):
+                    dir_sign = 1
+                elif (self.servo_handler.direction == ServoHandler.DIRECTION_SOUTH):
+                    dir_sign = -1
+                self.target_hdg = dir_sign * K_p * (lidar_data.west_dist - lidar_data.east_dist)
+            elif abs((lidar_data.west_dist - lidar_data.east_dist)/math.cos(self.cur_pose.hdg)) <= 5:
                 self.target_hdg = 0
 
         
-        '''  
+        '''
         if ((dir == ServoHandler.DIRECTION_NORTH or dir == ServoHandler.DIRECTION_SOUTH) and
             lidar_data.is_west_wall() and lidar_data.is_east_wall()):
             off_center = lidar_data.west_dist - lidar_data.east_dist
@@ -289,13 +314,11 @@ class Robot(object):
            #     noservocorrect = True
            # else:
            #     noservocorrect = False
-        ''' 
+        '''
 
-    def compute_cur_pose(self, prev_pose, delta_angles, t):
+    def compute_cur_pose(self, delta_angles, t):
         '''
         Input:
-            - prev_pose: a Pose object that is the robot's previous pose in the
-                         global coordinate frame
             - delta_angles: a list of 4 angle measurements (angle measured from
                             0 to 1) that represent are the change in angular
                             position of each servo as a result of rotation
@@ -340,7 +363,7 @@ class Robot(object):
         '''
 
         # Change in time between two pose calculations
-        delta_t = t - prev_pose.t
+        delta_t = t - self.prev_pose.t
         #print 'Delta t: ' + str(delta_t)
         
         # 1. Omniwheel angular velocities (signed magnitudes indicating rotation
@@ -359,7 +382,7 @@ class Robot(object):
         # system overconstrained.
         
         #angular_vels_alphabetical = [w_A, w_B, w_C, w_D]
-        #prev_angular_vels = [prev_pose.w_A, prev_pose.w_B, prev_pose.w_C, prev_pose.w_D]
+        #prev_angular_vels = [self.prev_pose.w_A, self.prev_pose.w_B, self.prev_pose.w_C, self.prev_pose.w_D]
         # TODO: Consider implementing a more robust filter such as a Kalman
         #       filter
         # omegas_passed = self.filter_omegas(prev_angular_vels, angular_vels_alphabetical)
@@ -390,8 +413,8 @@ class Robot(object):
         
         # 4. Convert from local to global coordinates with a rotation matrix
         # Average heading estimate
-        #robot_average_hdg = prev_pose.hdg + (robot_delta_hdg/2)
-        robot_average_hdg = prev_pose.hdg + robot_delta_hdg
+        #robot_average_hdg = self.prev_pose.hdg + (robot_delta_hdg/2)
+        robot_average_hdg = self.prev_pose.hdg + robot_delta_hdg
         
         # Apply filter to raw heading value (robot_average_hdg)
         # TODO
@@ -414,8 +437,8 @@ class Robot(object):
         # Displacement in global frame (s = v_(avg) * t)
         displacement_world_frame = [average_vel_world_frame[0][0] * delta_t,
                                     average_vel_world_frame[1][0] * delta_t]
-        return PoseVelTimestamp(prev_pose.x - displacement_world_frame[0],
-                                prev_pose.y - displacement_world_frame[1],
+        return PoseVelTimestamp(self.prev_pose.x - displacement_world_frame[0],
+                                self.prev_pose.y - displacement_world_frame[1],
                                 -average_vel_world_frame[0][0],
                                 -average_vel_world_frame[1][0],
                                 robot_average_hdg,
