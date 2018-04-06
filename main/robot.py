@@ -83,10 +83,6 @@ class Robot(object):
     # TODO: theta (heading) should perhaps be accounted for. Currently set to a
     #       default value of 0.
     def move(self, u, v, t, theta=0):
-        //lidar code for getting neighbors []
-        for i in neigbors
-            graph.addEdge(i)
-        graph.update
         pass
         
     def initialize_lidars(self):
