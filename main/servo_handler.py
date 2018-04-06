@@ -13,7 +13,14 @@ import math
 # Class that handles the commanding of the servos and the reception of position
 # feedback data
 #class ServoHandler(threading.Thread):
+
 class ServoHandler():
+
+    DIRECTION_NORTH = 0
+    DIRECTION_WEST = 1
+    DIRECTION_SOUTH = 2
+    DIRECTION_EAST = 3
+
     def __init__(self, lib, pi_handler):
         #threading.Thread.__init__(self)
         #self.daemon = True
@@ -21,6 +28,8 @@ class ServoHandler():
         
         # Maps servo names to their signal pins
         self.servo_names = {'ne': 4, 'nw': 17, 'se': 10, 'sw': 22}
+        self.servo_speeds = {}
+        self.direction = ServoHandler.DIRECTION_NORTH
         # # Servo signal pins
         # self.ne = 4 # northeast
         # self.nw = 17 # northwest
@@ -49,6 +58,7 @@ class ServoHandler():
           200 is max speed counterclockwise
         '''
         self.check_servo_name(servo)
+        self.servo_speeds[servo] = speed
         
         # Check legality of input speed argument
         if speed < -200 or speed > 200:
@@ -58,6 +68,10 @@ class ServoHandler():
         # Convert speed input to pulsewidth
         pulse_width = int(speed + 1500)
         self.pi.set_servo_pulsewidth(self.servo_names[servo], pulse_width)
+
+    def adjust_signal(self, servo, offset):
+        self.check_servo_name(servo)
+        self.send_signal(servo, self.servo_speeds[servo] + offset)
         
     def stop(self, servo):
         self.send_signal(servo, 0)
@@ -107,32 +121,61 @@ class ServoHandler():
         
     def move_north(self):
         # Uncorrected northward movement, medium speed
-        print 'MOVING NORTH'
-        self.send_signal('ne', -100)
-        self.send_signal('nw', 100)
-        self.send_signal('se', -100)
-        self.send_signal('sw', 85) # e.g., can correct to 90
+        self.direction = ServoHandler.DIRECTION_NORTH
+        self.send_signal('ne', -75)
+        self.send_signal('nw', 75)
+        self.send_signal('se', -75)
+        self.send_signal('sw', 65)
         
     def move_south(self):
         # Uncorrected southward movement, medium speed
-        self.send_signal('ne', 100)
-        self.send_signal('nw', -100)
-        self.send_signal('se', 100)
-        self.send_signal('sw', -100)
+        self.direction = ServoHandler.DIRECTION_SOUTH
+        self.send_signal('ne', 60)
+        self.send_signal('nw', -75)
+        self.send_signal('se', 75)
+        self.send_signal('sw', -75)
         
     def move_east(self):
         # Uncorrected eastward movement, medium speed
-        self.send_signal('ne', 100)
-        self.send_signal('nw', 100)
-        self.send_signal('se', -100)
-        self.send_signal('sw', -100)
+        self.direction = ServoHandler.DIRECTION_EAST
+        self.send_signal('ne', 75)
+        self.send_signal('nw', 60)
+        self.send_signal('se', -75)
+        self.send_signal('sw', -75)
         
     def move_west(self):
         # Uncorrected westward movement, medium speed
-        self.send_signal('ne', -100)
-        self.send_signal('nw', -100)
-        self.send_signal('se', 100)
-        self.send_signal('sw', 100)
+        self.direction = ServoHandler.DIRECTION_WEST
+        self.send_signal('ne', -75)
+        self.send_signal('nw', -75)
+    #    self.send_signal('se', 65)
+     #   self.send_signal('sw', 75)
+        self.send_signal('se', 75)
+        self.send_signal('sw', 60)
+
+    def move_direction(self, dir):
+        self.direction = dir
+        if dir == ServoHandler.DIRECTION_NORTH:
+            self.send_signal('ne', -75)
+            self.send_signal('nw', 75)
+            self.send_signal('se', -75)
+            self.send_signal('sw', 65)
+        elif dir == ServoHandler.DIRECTION_WEST:
+            self.send_signal('ne', -75)
+            self.send_signal('nw', -75)
+            self.send_signal('se', 75)
+            self.send_signal('sw', 60)
+        elif dir == ServoHandler.DIRECTION_SOUTH:
+            self.send_signal('ne', 60)
+            self.send_signal('nw', -75)
+            self.send_signal('se', 75)
+            self.send_signal('sw', -75)
+        elif dir == ServoHandler.DIRECTION_EAST:
+            self.send_signal('ne', 75)
+            self.send_signal('nw', 60)
+            self.send_signal('se', -75)
+            self.send_signal('sw', -75)
+
             
     # def run(self):
     #     # TODO: Run the thread
