@@ -1,4 +1,4 @@
-
+from collections import deque
 #our class for the adjacency matrix graph implementation
 class Graph(object):
 
@@ -69,4 +69,19 @@ class Graph(object):
 			return True
 		else:
 			return False
+
+	#returns a list of the shortest path between two points
+	def shortestPath(self, node1x, node1y, node2x, node2y):
+
+		node1 = findNode(node1x, node1y)
+		node2 = findNode(node2x, node2y)
+
+		queue = deque()
+		queue.append(node1)
+
+		while not len(queue) = 0:
+			currentNode = queue.popleft()
+
+
+
 
