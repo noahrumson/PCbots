@@ -33,14 +33,16 @@ class Robot(object):
         GPIO.setup(19, GPIO.OUT)     # GPIO_19 = Lidar2
         GPIO.setup(26, GPIO.OUT)     # GPIO_26 = Lidar3
         
-        # Chip enable
-        GPIO.output(6, 1)
-        GPIO.output(13, 1)
-        GPIO.output(19, 1)
-        GPIO.output(26, 1)
+        # Turn off all lidars to prepare them to be reset
+        #GPIO.output(6, 0)
+        #GPIO.output(13, 0)
+        #GPIO.output(19, 0)
+        #GPIO.output(26, 0)
         
         self.lib = ctypes.cdll.LoadLibrary(os.path.abspath('/home/pi/A-Maze/'
                                                         'libsensordata.so'))
+
+        subprocess.call("python init_i2c.py", shell=True)
         self.lib.init()
         self.pi = pigpio.pi() # binds to port 8888 by default
         # For servo feedback data: set the return types to double
@@ -131,8 +133,10 @@ class Robot(object):
         
         # while True:
 
-        #while (t_elapsed < 1.5):
-        while (abs(prev_pose.hdg) < math.radians(45)):
+        testX = 0.0
+        testY = 0.0
+        while (t_elapsed < 4):
+       # while (abs(prev_pose.hdg) < math.radians(45)):
             cur_time = time.time() # TODO: @ CONSIDER TESTING
 
         # TODO: filter heading values to not fluctuate so quickly based on a
@@ -142,9 +146,9 @@ class Robot(object):
             # Try to read Lidar data, if new data has come in
             if not self.lidar_queue.empty():
                 lidar_data = self.lidar_queue.get()
-                print '------------------'
-                print 'LIDAR:'
-                print lidar_data.to_string()
+                #print '------------------'
+               # print 'LIDAR:'
+               # print lidar_data.to_string()
                 
             # TODO: Work on this angle position feedback getting. Perhaps there
             # is a notable disparity between servos' feedback frequencies, which
@@ -162,16 +166,26 @@ class Robot(object):
                           feedback_data.se_angle,
                           feedback_data.sw_angle]
             
-            
                 delta_angles = self.servo_handler.get_delta_angles(prev_angles, # TODO: @ CONSIDER TESTING
                                                                     angles)
-            
+         
+                vvec = np.matrix([
+                    [delta_angles[1] * 19 / math.sqrt(2)],
+                    [delta_angles[1] * 19 / math.sqrt(2)]]
+                )
+                testV = self.apply_rotation_matrix(vvec, prev_pose.hdg)
+                testX += testV[0]
+                testY += testV[1]
+
+                for x in delta_angles:
+                    if abs(x) <= 0.0001:
+                        print "Updating too fast"
                 #print 'T DIFF (period): '
                 #print time.time() - cur_time
                 cur_pose = self.compute_cur_pose(prev_pose, delta_angles, cur_time)
                 prev_pose = cur_pose
                 
-                #print cur_pose.to_string()
+                print cur_pose.to_string()
             
                 prev_angles = angles
                 
@@ -193,7 +207,8 @@ class Robot(object):
             # if lidar_data is not None:
             #     self.move_to_open_space(lidar_data) # TODO
 
-            
+        print cur_pose.to_string()
+        print testX, testY
         self.servo_handler.stop_all()
             
     def compute_cur_pose(self, prev_pose, delta_angles, t):

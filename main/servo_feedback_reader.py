@@ -65,7 +65,7 @@ class ServoFeedbackReader(threading.Thread):
             
             # Note that sleep time, in theory, should be a function of the speed
             # at which we drive the robot
-            time.sleep(0.02)
+            time.sleep(0.015)
             
                         
             ne_time, ne_angle = new_angles[0]

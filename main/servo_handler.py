@@ -111,7 +111,7 @@ class ServoHandler():
         self.send_signal('ne', -100)
         self.send_signal('nw', 100)
         self.send_signal('se', -100)
-        self.send_signal('sw', 100) # e.g., can correct to 90
+        self.send_signal('sw', 85) # e.g., can correct to 90
         
     def move_south(self):
         # Uncorrected southward movement, medium speed
