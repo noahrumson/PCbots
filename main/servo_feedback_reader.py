@@ -4,11 +4,12 @@ import time
 
 
 class ServoFeedbackReader(threading.Thread):
-    def __init__(self, servo_handler):
+    def __init__(self, servo_handler, killqueue):
         threading.Thread.__init__(self)
         self.daemon = True
         self.servo_handler = servo_handler
         self.servo_feedback_queue = Queue.Queue()
+        self.killqueue = killqueue
         self.prev_feedback_data = None
                                                    
     def get_data(self):
@@ -66,7 +67,8 @@ class ServoFeedbackReader(threading.Thread):
             # Note that sleep time, in theory, should be a function of the speed
             # at which we drive the robot
             #time.sleep(0.015)
-            time.sleep(0.016)
+            #time.sleep(0.016)
+            time.sleep(0.02)
             
                         
             ne_time, ne_angle = new_angles[0]
@@ -85,6 +87,9 @@ class ServoFeedbackReader(threading.Thread):
     def run(self):
         # Run the thread
         while True:
+            if not self.killqueue.empty():
+                # End this thread
+                return
             self.get_data()
             
     

@@ -78,6 +78,7 @@ class ServoHandler():
         
     def stop_all(self):
         for servo in self.servo_names.keys():
+            print 'SERVO:', servo
             self.send_signal(servo, 0)
         
     def check_servo_name(self, servo):

@@ -19,9 +19,10 @@ import subprocess
 # sensors and their address collisions?
 
 class LidarReader(threading.Thread):
-    def __init__(self, lib):
+    def __init__(self, lib, killqueue):
         
         self.lib = lib
+        self.killqueue = killqueue
         
         threading.Thread.__init__(self)
         # TODO: Depending on whether or not the Lidar C code can handle an
@@ -79,6 +80,9 @@ class LidarReader(threading.Thread):
     def run(self):
         # Run the thread
         while True:
+            if not self.killqueue.empty():
+                # End this thread
+                return
             self.get_data()
 
 # Class that stores an instance of lidar data

@@ -17,7 +17,7 @@ import subprocess
 # sensors and their address collisions?
 
 class ButtonInput(threading.Thread):
-    def __init__(self, lib, pi_handler, button):
+    def __init__(self, lib, pi_handler, button, killqueue):
         threading.Thread.__init__(self)
     	# Maps button names to their signal pins
         self.buttons = {'white': 23, 'black': 24}
@@ -30,6 +30,7 @@ class ButtonInput(threading.Thread):
         self.pi = pi_handler
 
         self.button_queue = Queue.Queue()
+        self.killqueue = killqueue
 
     def buttonpress_callback(self, button, callback_func):
         gpio = self.buttons[button]
@@ -42,8 +43,15 @@ class ButtonInput(threading.Thread):
     def run(self):
     	
         while True:
-            if self.pi.wait_for_edge(self.current_button, pigpio.FALLING_EDGE, 100):
-                self.button_queue.put(True)
+            if not self.killqueue.empty():
+                # End this thread
+                return
+            try:
+                if self.pi.wait_for_edge(self.current_button, pigpio.FALLING_EDGE, 4):
+                    self.button_queue.put(True)
+            except AttributeError:
+                # This seems like bad coding practice, but is an attempt at a quick fix
+                return
 
 class LEDOutput(threading.Thread):
     def __init__(self, lib, pi_handler):

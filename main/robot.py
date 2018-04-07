@@ -8,7 +8,9 @@ import os
 import math
 import numpy as np
 import subprocess
+import Queue
 import RPi.GPIO as GPIO
+import threading
 
 from lidar_reader import LidarReader
 from servo_handler import ServoHandler
@@ -18,29 +20,6 @@ import button_led_handler
 
 # To access Raspberry Pi's GPIO pins:
 #import RPi.GPIO as GPIO
-
-# Some things to initialize globally, e.g., threads that should not be created
-# upon each instantiation of a Robot object
-lib = ctypes.cdll.LoadLibrary(os.path.abspath('/home/pi/A-Maze/'
-                                                'libsensordata.so'))
-# Create a LidarReader object
-lreader = LidarReader(lib)
-# Call the LidarReader object's start() method, starting its thread
-lreader.start()
-print 'LidarReader thread started'
-
-global_pi = pigpio.pi() # binds to port 8888 by default
-
-servo_handler = ServoHandler(lib, global_pi)
-
-servo_feedback_reader = ServoFeedbackReader(servo_handler)
-# Start the servo feedback reader's thread
-servo_feedback_reader.start()
-print 'Servo feedback thread started'
-
-buttoninput = button_led_handler.ButtonInput(lib, global_pi, 'black')
-buttoninput.start()
-print 'Reset button thread started'
 
 class Robot(object):
 
@@ -64,11 +43,17 @@ class Robot(object):
         #GPIO.output(19, 0)
         #GPIO.output(26, 0)
         
-        self.lib = lib
+        # Set up queues designated for telling other threads to terminate
+        self.lidar_kill_queue = Queue.Queue()
+        self.servo_feedback_kill_queue = Queue.Queue()
+        self.buttoninput_kill_queue = Queue.Queue()
+        
+        self.lib = ctypes.cdll.LoadLibrary(os.path.abspath('/home/pi/A-Maze/'
+                                                        'libsensordata.so'))
 
         subprocess.call("python init_i2c.py", shell=True)
         self.lib.init()
-        self.pi = global_pi
+        self.pi = pigpio.pi() # binds to port 8888 by default
         # For servo feedback data: set the return types to double
         self.lib.servo_angle_ne.restype = ctypes.c_double
         self.lib.servo_angle_nw.restype = ctypes.c_double
@@ -110,14 +95,22 @@ class Robot(object):
         pass
         
     def initialize_lidars(self):
-        self.lreader = lreader
+        self.lreader = LidarReader(self.lib, self.lidar_kill_queue)
+        # Call the LidarReader object's start() method, starting its thread
+        self.lreader.start()
+        print 'LidarReader thread started'
         
     def initialize_servos(self):
-        self.servo_handler = servo_handler
-        self.servo_feedback_reader = servo_feedback_reader
+        self.servo_handler = ServoHandler(self.lib, self.pi)
+        self.servo_feedback_reader = ServoFeedbackReader(self.servo_handler, self.servo_feedback_kill_queue)
+        # Start the servo feedback reader's thread
+        self.servo_feedback_reader.start()
+        print 'Servo feedback thread started'
 
     def initialize_reset_button(self):
-        self.buttoninput = buttoninput
+        self.buttoninput = button_led_handler.ButtonInput(self.lib, self.pi, 'black', self.buttoninput_kill_queue)
+        self.buttoninput.start()
+        print 'Reset button thread started'
         self.button_queue = self.buttoninput.button_queue
         
     def initialize_leds(self):
@@ -387,8 +380,6 @@ class Robot(object):
     def proportional_adjust_servos(self):
         K_p = 4
         dir = self.servo_handler.direction
-        print 'CURPOSE HDG:',self.cur_pose.hdg
-        print 'TARGET HDG:',self.target_hdg
         if dir == ServoHandler.DIRECTION_NORTH:
             self.servo_handler.adjust_signal("sw", (self.cur_pose.hdg - self.target_hdg) * K_p)
         elif dir == ServoHandler.DIRECTION_WEST:
@@ -678,8 +669,14 @@ class Robot(object):
         
     def shutdown(self):
         # TODO: Add things to this?
+        self.lidar_kill_queue.put(True)
+        self.servo_feedback_kill_queue.put(True)
+        self.buttoninput_kill_queue.put(True)
         if self.servo_handler is not None:
             self.servo_handler.close_handler()
+        # Allow time for threads of previous robot to get messages put on the
+        # kill queues and quit
+        time.sleep(5)
             
 
 # (Really just a vehicle state class...)
@@ -745,6 +742,7 @@ if __name__ == '__main__':
     # subprocess.call('sudo pigpiod', shell=True)
     try:
         while True:
+            print '##################NUM THREADS:',threading.active_count()
             temp_handler = pigpio.pi() # Temp handler to listen to start button
             print "Waiting for start press..."
             if temp_handler.wait_for_edge(23, pigpio.FALLING_EDGE,10800):
@@ -754,8 +752,9 @@ if __name__ == '__main__':
                 try:
                     robot.mainloop()
                 except ResetException:
-                    print "EMERGENCY! STOPPING!... Press White Button to start again"
+                    print 'EMERGENCY! STOPPING!...'
                     robot.shutdown()
+                    print 'Press White Button to start again'
                     # Manually close threads. They are daemon threads, but since main thread does not end,
                     continue
                 except KeyboardInterrupt as e:
