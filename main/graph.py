@@ -71,7 +71,6 @@ class Graph(object):
 
         for i in range(self.size):
             if self.adjacencyArray[index][i] == 1:
-                print 'ADJ:', i
                 nodeY = i/self.boardWidth
                 nodeX = i - self.boardWidth*nodeY
                 adjacent.append(self.findNode(nodeX, nodeY))
@@ -109,7 +108,7 @@ class Graph(object):
         queue = deque()
         queue.append(node1)
 
-
+        #shortestPath = deque() # ADDED BY THEO
         while not len(queue) == 0:
 
 			#pop the first thing in queue and gets neigbors
@@ -121,27 +120,31 @@ class Graph(object):
                 break
 
 			#for every neigbor, if it hasn;t been marked yet, mark it with a prevNode and append it to the queue
-            for i in range(neigbors):
-                if neigbors[i].getPrev == None:
-                    neigbors[i].setPrev(currentNode)
-                    queue.append(neigbors[i])
+            for neighbor in neighbors:
+                if neighbor.getPrev() is None:
+                    neighbor.setPrev(currentNode)
+                    queue.append(neighbor)
 
 		#if it traversed all paths and didn't find it
-        if not currentNode == node2:
-            return None
+        # this will not occur in our case, but would be good to have in general
+        # if not currentNode == node2:
+        #     return None
 
 		#shortest path begins with endpoint
-        shortestPath = deque()
-        shortestPath.appendLeft(currentNode)
+        shortestPath = deque() # COMMENTED OUT BY THEO
+        shortestPath.appendleft(currentNode) # COMMENTED OUT BY THEO
+                    #shortestPath.appendleft(currentNode) # ADDED BY THEO
 
 		#then go back through the prev pointers adding the
-        while not currentNode.getPrev() == None:
+        while currentNode.getPrev() is not node1:
             currentNode = currentNode.getPrev()
-            shortestPath.appendLeft(currentNode)
+            shortestPath.appendleft(currentNode)
+            
+        shortestPath.appendleft(node1)
 
         shortestPathBack = list(shortestPath)
         shortestPathBack.reverse()
-        return (shortestPath,shortestPathBack)
+        return (list(shortestPath), shortestPathBack)
 
 
 
@@ -154,8 +157,8 @@ class Node(object):
         self.boardWidth = 16
 
 	#mutator for the previous node used in bfs algorithm
-    def setPrev(self, Node):
-        self.prevNode = Node
+    def setPrev(self, node):
+        self.prevNode = node
 
 	#accessor for the previous node
     def getPrev(self):
@@ -176,6 +179,5 @@ class Node(object):
     def getXY(self):
         nodeY = self.intVal/self.boardWidth
         nodeX = self.intVal - self.boardWidth*nodeY
-
-        return(nodeX,nodeY)
+        return (nodeX, nodeY)
 

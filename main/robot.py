@@ -157,11 +157,15 @@ class Robot(object):
         self.square_y = 0 # index of maze
         self.last_square_at_x = 0 # mm
         self.last_square_at_y = 0 # mm
+        
+        self.found_center = False
+        self.time_for_fast_run = False
+        self.time_to_shutdown = False
 
         self.graph = Graph()
         self.in_first_square()
         #while (t_elapsed < 10):
-        while (True):
+        while True:
             cur_time = time.time() # TODO: @ CONSIDER TESTING
 
             # TODO: filter heading values to not fluctuate so quickly based on a
@@ -200,11 +204,15 @@ class Robot(object):
             # would probably need to be accounted for in a more sophisticated
             # manner...
             #time.sleep(0.1)
+            
+            if self.time_to_shutdown:
+                break
+            
             if not self.servo_feedback_queue.empty():
                 feedback_data = self.servo_feedback_queue.get()
-                #print '------------------'
-                #print 'SERVO FEEDBACK:'
-                #print feedback_data.to_string()
+                # print '------------------'
+                # print 'SERVO FEEDBACK:'
+                # print feedback_data.to_string()
                 
                 angles = [feedback_data.ne_angle,
                           feedback_data.nw_angle,
@@ -219,6 +227,7 @@ class Robot(object):
                 #print 'T DIFF (period): '
                 #print time.time() - cur_time
                 self.cur_pose = self.compute_cur_pose(delta_angles, cur_time)
+                #print self.cur_pose.to_string()
 
                 self.proportional_adjust_servos()
 
@@ -324,50 +333,156 @@ class Robot(object):
             self.graph.addEdge(self.square_x, self.square_y, self.square_x, self.square_y - 1)
         if not lidar_data.is_east_wall():
             self.graph.addEdge(self.square_x, self.square_y, self.square_x + 1, self.square_y)
-        self.check_if_win()
+        
+        if not self.found_center:
+            if self.check_if_win():
+                self.found_center = True
+                print 'Maze has been solved; robot is in center of the maze!'
+                self.win_node_x, self.win_node_y = self.graph.getCurrentNode().getXY()
+                self.shortest_path, self.shortest_path_back = self.graph.shortestPath(0, 0, self.win_node_x, self.win_node_y)
+                print 'SP'
+                for node in self.shortest_path:
+                    print node.getXY()
+            # Want to run the shortest path back and then run the shortest path once we are back at the origin node
+            
         
     def check_if_win(self):
         #option1
+        # if self.square_x <= 14 and self.square_y <= 14:
+        #     return (self.graph.isConnected(self.square_x,self.square_y, self.square_x + 1, self.square_y)
+        #       and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y + 1)
+        #       and self.graph.isConnected(self.square_x + 1, self.square_y, self.square_x + 1, self.square_y + 1)
+        #       and self.graph.isConnected(self.square_x, self.square_y+1, self.square_x + 1, self.square_y + 1))
+        #
+        # #option2
+        # if self.square_x >= 1 and self.square_y <= 14:
+        #     return (self.graph.isConnected(self.square_x, self.square_y, self.square_x - 1, self.square_y)
+        #       and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y + 1)
+        #       and self.graph.isConnected(self.square_x, self.square_y + 1, self.square_x - 1, self.square_y + 1)
+        #       and self.graph.isConnected(self.square_x - 1, self.square_y, self.square_x - 1, self.square_y + 1))
+        #
+        # #option3
+        # if self.square_x >= 1 and self.square_y >= 1:
+        #     return (self.graph.isConnected(self.square_x, self.square_y, self.square_x - 1, self.square_y)
+        #       and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y - 1)
+        #       and self.graph.isConnected(self.square_x, self.square_y - 1, self.square_x - 1, self.square_y)
+        #       and self.graph.isConnected(self.square_x - 1, self.square_y, self.square_x, self.square_y - 1))
+        #
+        # #option4
+        # if self.square_x <= 14 and self.square_y >= 1:
+        #     return (self.graph.isConnected(self.square_x, self.square_y, self.square_x + 1, self.square_y)
+        #       and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y - 1)
+        #       and self.graph.isConnected(self.square_x + 1, self.square_y, self.square_x + 1, self.square_y - 1)
+        #       and self.graph.isConnected(self.square_x, self.square_y - 1, self.square_x + 1, self.square_y - 1))
+        
+        cases_to_check = [False, False, False, False]
+        
         if self.square_x <= 14 and self.square_y <= 14:
-            if (self.graph.isConnected(self.square_x,self.square_y, self.square_x + 1, self.square_y)
+            cases_to_check[0] = True
+            
+        if self.square_x >= 1 and self.square_y <= 14:
+            cases_to_check[1] = True
+            
+        if self.square_x >= 1 and self.square_y >= 1:
+            cases_to_check[2] = True
+            
+        if self.square_x <= 14 and self.square_y >= 1:
+            cases_to_check[3] = True
+            
+        cases = [self.case1, self.case2, self.case3, self.case4]
+        
+        for num, checking in enumerate(cases_to_check):
+            if checking:
+                if cases[num]():
+                    return True
+        
+        # print 'x:',self.square_x
+        # print 'y:',self.square_y
+        # return ((self.graph.isConnected(self.square_x, self.square_y, self.square_x + 1, self.square_y)
+        #       and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y + 1)
+        #       and self.graph.isConnected(self.square_x + 1, self.square_y, self.square_x + 1, self.square_y + 1)
+        #       and self.graph.isConnected(self.square_x, self.square_y+1, self.square_x + 1, self.square_y + 1))
+        #       or
+        #       (self.graph.isConnected(self.square_x, self.square_y, self.square_x - 1, self.square_y)
+        #         and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y + 1)
+        #         and self.graph.isConnected(self.square_x, self.square_y + 1, self.square_x - 1, self.square_y + 1)
+        #         and self.graph.isConnected(self.square_x - 1, self.square_y, self.square_x - 1, self.square_y + 1))
+        #       or
+        #       (self.graph.isConnected(self.square_x, self.square_y, self.square_x - 1, self.square_y)
+        #         and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y - 1)
+        #         and self.graph.isConnected(self.square_x, self.square_y - 1, self.square_x - 1, self.square_y)
+        #         and self.graph.isConnected(self.square_x - 1, self.square_y, self.square_x, self.square_y - 1))
+        #       or
+        #       (self.graph.isConnected(self.square_x, self.square_y, self.square_x + 1, self.square_y)
+        #         and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y - 1)
+        #         and self.graph.isConnected(self.square_x + 1, self.square_y, self.square_x + 1, self.square_y - 1)
+        #         and self.graph.isConnected(self.square_x, self.square_y - 1, self.square_x + 1, self.square_y - 1))
+        #       )
+              
+    def case1(self):
+        return (self.graph.isConnected(self.square_x, self.square_y, self.square_x + 1, self.square_y)
               and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y + 1)
               and self.graph.isConnected(self.square_x + 1, self.square_y, self.square_x + 1, self.square_y + 1)
-              and self.graph.isConnected(self.square_x, self.square_y+1, self.square_x + 1, self.square_y + 1)):
-              
-              pass
-                      
-        #option2
-        if self.square_x >= 1 and self.square_y <= 14:
-            if (self.graph.isConnected(self.square_x, self.square_y, self.square_x - 1, self.square_y)
-              and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y + 1)
-              and self.graph.isConnected(self.square_x, self.square_y + 1, self.square_x - 1, self.square_y + 1)
-              and self.graph.isConnected(self.square_x - 1, self.square_y, self.square_x - 1, self.square_y + 1)):
-              
-              pass
-              
-            
-        #option3
-        if self.square_x >= 1 and self.square_y >= 1:
-            if (self.graph.isConnected(self.square_x, self.square_y, self.square_x - 1, self.square_y)
-              and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y - 1)
-              and self.graph.isConnected(self.square_x, self.square_y - 1, self.square_x - 1, self.square_y)
-              and self.graph.isConnected(self.square_x - 1, self.square_y, self.square_x, self.square_y - 1)):
-              
-              pass
-            
-        #option4
-        if self.square_x <= 14 and self.square_y >= 1:
-            if(self.graph.isConnected(self.square_x, self.square_y, self.square_x + 1, self.square_y)
-              and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y - 1)
-              and self.graph.isConnected(self.square_x + 1, self.square_y, self.square_x + 1, self.square_y - 1)
-              and self.graph.isConnected(self.square_x, self.square_y - 1, self.square_x + 1, self.square_y - 1)):
-              
-              pass
+              and self.graph.isConnected(self.square_x, self.square_y+1, self.square_x + 1, self.square_y + 1))
+    
+    def case2(self):
+        return (self.graph.isConnected(self.square_x, self.square_y, self.square_x - 1, self.square_y)
+          and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y + 1)
+          and self.graph.isConnected(self.square_x, self.square_y + 1, self.square_x - 1, self.square_y + 1)
+          and self.graph.isConnected(self.square_x - 1, self.square_y, self.square_x - 1, self.square_y + 1))
+          
+    def case3(self):
+        return (self.graph.isConnected(self.square_x, self.square_y, self.square_x - 1, self.square_y)
+          and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y - 1)
+          and self.graph.isConnected(self.square_x, self.square_y - 1, self.square_x - 1, self.square_y)
+          and self.graph.isConnected(self.square_x - 1, self.square_y, self.square_x, self.square_y - 1))
+          
+    def case4(self):
+        return (self.graph.isConnected(self.square_x, self.square_y, self.square_x + 1, self.square_y)
+          and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y - 1)
+          and self.graph.isConnected(self.square_x + 1, self.square_y, self.square_x + 1, self.square_y - 1)
+          and self.graph.isConnected(self.square_x, self.square_y - 1, self.square_x + 1, self.square_y - 1))
 
     def decide_turn(self):
         adjacent_nodes = self.graph.findAdjacent(self.graph.getCurrentNode())
         turn_node = min(adjacent_nodes, key = lambda x: x.getVisited())
         node_x, node_y = turn_node.getXY()
+        
+        if self.found_center and not self.time_for_fast_run:
+            cur_node_x, cur_node_y = self.shortest_path_back[0].getXY()
+            if cur_node_x == 0 and cur_node_y == 0:
+                self.time_for_fast_run = True
+                self.fast_run_enabled = False
+                self.servo_handler.stop_all()
+            else:
+                # Next node values. Replaces those computed in the above findAdjacent code
+                node_x, node_y = self.shortest_path_back[1].getXY()
+                self.shortest_path_back.pop(0) # remove first element from list
+                
+        if self.time_for_fast_run:
+            if not self.fast_run_enabled:
+                if self.pi.wait_for_edge(23, pigpio.FALLING_EDGE,10800):
+                    self.fast_run_enabled = True
+                    cur_node_x, cur_node_y = self.shortest_path[0].getXY()
+                    if cur_node_x == self.win_node_x and cur_node_y == self.win_node_y:
+                        # At this point, we are done! Shutdown the robot
+                        self.shutdown()
+                    else:
+                        # Next node values. Replaces those computed in the above findAdjacent code
+                        node_x, node_y = self.shortest_path[1].getXY()
+                        self.shortest_path.pop(0) # remove first element from list
+            else:
+                cur_node_x, cur_node_y = self.shortest_path[0].getXY()
+                if cur_node_x == self.win_node_x and cur_node_y == self.win_node_y:
+                    # At this point, we are done! Shutdown the robot
+                    self.shutdown()
+                    return
+                else:
+                    # Next node values. Replaces those computed in the above findAdjacent code
+                    node_x, node_y = self.shortest_path[1].getXY()
+                    self.shortest_path.pop(0) # remove first element from list
+                
+            
         if node_x - self.square_x == 1:
             self.servo_handler.move_east() # TODO: WE SHOULD NOT BE CALLING THESE FROM LIDAR DATA IN ROBOT.PY, SHOULD WE? WE SHOULD USE CORRECTED VALUES FROM P-ONLY LOOP, NO? NOT SURE... TALK THROUGH THIS WITH NOAH
         elif self.square_x - node_x == 1:
@@ -669,6 +784,7 @@ class Robot(object):
         
     def shutdown(self):
         # TODO: Add things to this?
+        self.time_to_shutdown = True
         self.lidar_kill_queue.put(True)
         self.servo_feedback_kill_queue.put(True)
         self.buttoninput_kill_queue.put(True)
@@ -739,15 +855,18 @@ class ResetException(Exception):
 
 if __name__ == '__main__':
     robot = None
+    num_loops = 0
     # subprocess.call('sudo pigpiod', shell=True)
     try:
         while True:
+            num_loops += 1
+            print 'NUM_LOOPS:', num_loops
             # Seems that each pigpio.pi() opens a new thread
             # (see output of threading.active_count()). This takes up RPi
             # resources and affects its driving capabilities, it seems, so be
             # sure to close the temp_pi_handler each loop...
             temp_pi_handler = pigpio.pi() # Temp handler to listen to start button
-            print '##################NUM THREADS:',threading.active_count()
+            print '################## NUM THREADS:',threading.active_count()
             print "Waiting for start press..."
             if temp_pi_handler.wait_for_edge(23, pigpio.FALLING_EDGE,10800):
                 print 'White button pressed, robot class starting'
@@ -759,13 +878,16 @@ if __name__ == '__main__':
                     print 'EMERGENCY! STOPPING!...'
                     robot.shutdown()
                     print 'Press White Button to start again'
+                    temp_pi_handler.stop()
                     # Manually close threads. They are daemon threads, but since main thread does not end,
                     continue
                 except KeyboardInterrupt as e:
                     print e
                     break
-                finally:
                     temp_pi_handler.stop()
+                # except Exception as e:
+                #     print '!!!!!!!!', e
+                #     temp_pi_handler.stop()
             else:
                 break
     finally:
