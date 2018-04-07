@@ -69,7 +69,7 @@ class Graph(object):
 			if self.adjacencyArray[index][i] == 1:
 				nodeY = index/self.boardWidth
 				nodeX = index - self.boardWidth*nodeY
-				adjacent.append(this.findNode(nodeX, nodeY))
+				adjacent.append(self.findNode(nodeX, nodeY))
 
 		return adjacent
 
