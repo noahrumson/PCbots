@@ -21,15 +21,19 @@ class Graph(object):
 
 	#method to set currentNode
 	def setCurrentNode(self,nodeX,nodeY):
-		node = self.findNode(node1x,node1y)
-		self.currentNode = node
+		node = self.findNode(nodeX,nodeY)
+		self.currentNode = node.getIntVal()
+		
 
 	def getCurrentNode(self):
-		return getCurrentNode
+		nodeY = self.currentNode/self.boardWidth
+		nodeX = self.currentNode - self.boardWidth*nodeY
+		node = self.findNode(nodeX, nodeY)
+		return node
 
 	#method to update the amount of time it has been visited
 	def updateNodeVisit(self):
-		self.currentNode.visit()
+		self.getCurrentNode().visit()
 
 	#method to add an edge
 	def addEdge(self,node1x, node1y, node2x, node2y):
@@ -132,9 +136,6 @@ class Graph(object):
 		shortestPathBack.reverse()
 		return (shortestPath,shortestPathBack)
 
-	#returns the robot's current node		
-	def getCurrentNode(self):
-		return self.currentNode
 
 
 class Node(object):
