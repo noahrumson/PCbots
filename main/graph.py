@@ -53,6 +53,7 @@ class Graph(object):
 
 		#checking if the differences make sense, absval of xdif has to be 1 and ydif has to be 0, or xdif = 0 and absval of ydif has to be 1
 		if (abs(xdif) == 1 and ydif == 0) or (abs(ydif) == 1 and xdif == 0):
+			print "test"
 			self.adjacencyArray[node1.getIntVal()][node2.getIntVal()] = 1
 			self.adjacencyArray[node2.getIntVal()][node1.getIntVal()] = 1
 
