@@ -17,26 +17,33 @@ import subprocess
 # sensors and their address collisions?
 
 class ButtonInput(threading.Thread):
-    def __init__(self, lib, pi_handler):
+    def __init__(self, lib, pi_handler, button):
         threading.Thread.__init__(self)
     	# Maps button names to their signal pins
         self.buttons = {'white': 23, 'black': 24}
         # The white button is on gpio 23
         # The white button is on gpio 24
+        self.current_button = self.buttons[button]
 
         self.daemon = True
         # init the handler
         self.pi = pi_handler
 
+        self.button_queue = Queue.Queue()
+
     def buttonpress_callback(self, button, callback_func):
         gpio = self.buttons[button]
         self.pi.callback(gpio, pigpio.RISING_EDGE, callback_func)
 
-    def run(self, button, callback_func):
+    def wait_until_press(self, button):
+        gpio = self.buttons[button]
+        self.pi.wait_for_edge(gpio, pigpio.RISING_EDGE, 10800) # Timeout is 3 hours
+
+    def run(self):
     	
-        self.buttonpress_callback(button, callback_func)
         while True:
-            time.sleep(1)
+            if self.pi.wait_for_edge(self.current_button, pigpio.FALLING_EDGE, 100):
+                self.button_queue.put(True)
 
 class LEDOutput(threading.Thread):
     def __init__(self, lib, pi_handler):
@@ -52,7 +59,7 @@ class LEDOutput(threading.Thread):
 
         self.pi = pi_handler
 
-	def wink_led(self, name):
+    def wink_led(self, name):
         self.pi.write(self.led_names[name], 1)
         time.sleep(0.01)
         self.pi.write(self.led_names[name], 0)

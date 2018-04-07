@@ -24,7 +24,6 @@ class Robot(object):
     def __init__(self):
         # Run the pigpio daemon
         #os.system('sudo pigpiod') # TODO: Make sure this actually works
-        subprocess.call('sudo pigpiod', shell=True)
         
         GPIO.setmode(GPIO.BCM)     # Number GPIOs by channelID
         GPIO.setwarnings(False)    # Ignore Errors
@@ -64,6 +63,7 @@ class Robot(object):
         self.servo_handler = None
         self.initialize_lidars()
         self.initialize_servos()
+        self.initialize_reset_button()
         self.lidar_queue = self.lreader.lidar_queue
         self.servo_feedback_queue = self.servo_feedback_reader.servo_feedback_queue
         # At a distance of 60 mm, robot is close to wall
@@ -99,6 +99,16 @@ class Robot(object):
         # Start the servo feedback reader's thread
         self.servo_feedback_reader.start()
         print 'Servo feedback thread started'
+
+    def initialize_reset_button(self):
+        self.buttoninput = button_led_handler.ButtonInput(self.lib, self.pi, 'black')
+
+        self.buttoninput.start()
+        print 'Reset button thread started'
+        self.button_queue = self.buttoninput.button_queue
+        
+    def initialize_leds(self):
+        self.led = LEDOutput(self.lib, self.pi)
     
     def mainloop(self):
         
@@ -236,6 +246,11 @@ class Robot(object):
                 
             lidar_data = None
             feedback_data = None
+
+            # EMERGENCY RESET BUTTON WAS CLICKED
+            if not self.button_queue.empty():
+                raise ResetException()
+
             # Exit condition
             t_elapsed = cur_time - t_start
             
@@ -303,14 +318,6 @@ class Robot(object):
             self.graph.addEdge(self.square_x, self.square_y, self.square_x, self.square_y - 1)
         if not lidar_data.is_east_wall():
             self.graph.addEdge(self.square_x, self.square_y, self.square_x + 1, self.square_y)
-        self.check_if_win()
-        
-    def check_if_win(self):
-        #option1
-        if self.square_x <= 14 and 
-        #option2
-        #option3
-        #option4
 
     def decide_turn(self):
         adjacent_nodes = self.graph.findAdjacent(self.graph.getCurrentNode())
@@ -676,17 +683,35 @@ class PoseVelTimestamp(object):
                                   self.w_C_deg, self.w_D_deg,
                                   self.t))
                 
-        
+class ResetException(Exception):
+    pass
+
 if __name__ == '__main__':
-    robot = Robot()
+    robot = None
+    # subprocess.call('sudo pigpiod', shell=True)
     try:
-        robot.mainloop()
-    except KeyboardInterrupt as e:
-        print e
-        robot.shutdown()
+        while True:
+            temp_handler = pigpio.pi() # Temp handler to listen to start button
+            print "Waiting for start press..."
+            if temp_handler.wait_for_edge(23, pigpio.FALLING_EDGE,10800):
+                print "button pressed, robot class starting"
+                robot = Robot()
+
+                try:
+                    robot.mainloop()
+                except ResetException:
+                    print "EMERGENCY! STOPPING!... Press White Button to start again"
+                    robot.shutdown()
+                    continue
+                except KeyboardInterrupt as e:
+                    print e
+                    break
+            else:
+                break
     finally:
         print 'Terminating robot.py program'
         GPIO.cleanup()
-        subprocess.call('sudo killall pigpiod', shell=True)
-        robot.shutdown()
+        # subprocess.call('sudo killall pigpiod', shell=True)
+        if robot is not None:
+            robot.shutdown()
         print 'FINALLY'
