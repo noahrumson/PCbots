@@ -52,5 +52,13 @@ class LEDOutput(threading.Thread):
 
         self.pi = pi_handler
 
-	#def blink_led
+	def wink_led(self, name):
+        self.pi.write(self.led_names[name], 1)
+        time.sleep(0.01)
+        self.pi.write(self.led_names[name], 0)
 
+    def led_on(self, name):
+        self.pi.write(self.led_names[name], 1)
+
+    def led_off(self, name):
+        self.pi.write(self.led_names[name], 0 )
