@@ -168,8 +168,8 @@ class Node(object):
 		return self.visited
 
 	def getXY(self):
-		nodeY = intVal/self.boardWidth
-		nodeX = intVal - self.boardWidth*nodeY
+		nodeY = self.intVal/self.boardWidth
+		nodeX = self.intVal - self.boardWidth*nodeY
 
 		return(nodeX,nodeY)
 
