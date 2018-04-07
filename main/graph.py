@@ -146,6 +146,7 @@ class Node(object):
 		self.intVal = intVal
 		self.prevNode = None
 		self.visited = 0
+		self.boardWidth = 16
 
 	#mutator for the previous node used in bfs algorithm
 	def setPrev(self, Node):
