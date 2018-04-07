@@ -24,6 +24,7 @@ class Robot(object):
     def __init__(self):
         # Run the pigpio daemon
         #os.system('sudo pigpiod') # TODO: Make sure this actually works
+        #subprocess.call('sudo pigpiod', shell=True)
         
         GPIO.setmode(GPIO.BCM)     # Number GPIOs by channelID
         GPIO.setwarnings(False)    # Ignore Errors
@@ -318,6 +319,38 @@ class Robot(object):
             self.graph.addEdge(self.square_x, self.square_y, self.square_x, self.square_y - 1)
         if not lidar_data.is_east_wall():
             self.graph.addEdge(self.square_x, self.square_y, self.square_x + 1, self.square_y)
+        self.check_if_win()
+        
+    def check_if_win(self):
+        #option1
+        if self.square_x <= 14 and self.square_y <= 14:
+            if (self.graph.isConnected(self.square_x,self.square_y, self.square_x + 1, self.square_y)
+              and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y + 1)
+              and self.graph.isConnected(self.square_x + 1, self.square_y, self.square_x + 1, self.square_y + 1)
+              and self.graph.isConnected(self.square_x, self.square_y+1, self.square_x + 1, self.square_y + 1)):
+                      
+        #option2
+        if self.square_x >= 1 and self.square_y <= 14:
+            if (self.graph.isConnected(self.square_x, self.square_y, self.square_x - 1, self.square_y)
+              and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y + 1)
+              and self.graph.isConnected(self.square_x, self.square_y + 1, self.square_x - 1, self.square_y + 1)
+              and self.graph.isConnected(self.square_x - 1, self.square_y, self.square_x - 1, self.square_y + 1):
+              
+            
+        #option3
+        if self.square_x >= 1 and self.square_y >= 1:
+            if (self.graph.isConnected(self.square_x, self.square_y, self.square_x - 1, self.square_y)
+              and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y - 1)
+              and self.graph.isConnected(self.square_x, self.square_y - 1, self.square_x - 1, self.square_y)
+              and self.graph.isConnected(self.square_x - 1, self.square_y, self.square_x, self.square_y - 1):
+            
+        #option4
+        if self.square_x <= 14 and self.square_y >= 1:
+            if(self.graph.isConnected(self.square_x, self.square_y, self.square_x + 1, self.square_y)
+              and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y - 1)
+              and self.graph.isConnected(self.square_x + 1, self.square_y, self.square_x + 1, self.square_y - 1)
+              and self.graph.isConnected(self.square_x, self.square_y - 1, self.square_x + 1, self.square_y - 1))
+            
 
     def decide_turn(self):
         adjacent_nodes = self.graph.findAdjacent(self.graph.getCurrentNode())
