@@ -1,8 +1,8 @@
-import RPi.GPIO as GPIO  
-import subprocess 
-from time import sleep     # this lets us have a time delay: sleep(0.1)  
+import RPi.GPIO as GPIO
+import subprocess
+from time import sleep     # this lets us have a time delay: sleep(0.1)
 
-GPIO.setmode(GPIO.BCM)     # Number GPIOs by channelID   
+GPIO.setmode(GPIO.BCM)     # Number GPIOs by channelID
 # GPIO.setwarnings(False)    # Ignore Errors
 
 # Setup all GPIO pins as low.
@@ -16,13 +16,13 @@ GPIO.output(13, 0) # Chip Disable by pulling low
 GPIO.output(19, 0) # Chip Disable by pulling low
 GPIO.output(26, 0) # Chip Disable by pulling low
 
-try: 
+try:
     print("CE Lidar0")
 
     GPIO.output(6, 1) # Chip Enable by pulling high
     
-    lidar0_process = subprocess.Popen(['./runme0'], stdout = subprocess.PIPE) 
-    std_output = lidar0_process.communicate()[0] 
+    lidar0_process = subprocess.Popen(['/home/pi/A-Maze/main/runme0'], stdout = subprocess.PIPE)
+    std_output = lidar0_process.communicate()[0]
     
     print("Output: " + std_output) # Print Output
 
@@ -30,8 +30,8 @@ try:
 
     GPIO.output(13, 1) # Chip Enable by pulling high
     
-    lidar1_process = subprocess.Popen(['./runme1'], stdout = subprocess.PIPE) 
-    std_output = lidar1_process.communicate()[0] 
+    lidar1_process = subprocess.Popen(['/home/pi/A-Maze/main/runme1'], stdout = subprocess.PIPE)
+    std_output = lidar1_process.communicate()[0]
     
     print("Output: " + std_output) # Print Output
 
@@ -39,8 +39,8 @@ try:
 
     GPIO.output(19, 1) # Chip Enable by pulling high
     
-    lidar2_process = subprocess.Popen(['./runme2'], stdout = subprocess.PIPE) 
-    std_output = lidar2_process.communicate()[0] 
+    lidar2_process = subprocess.Popen(['/home/pi/A-Maze/main/runme2'], stdout = subprocess.PIPE)
+    std_output = lidar2_process.communicate()[0]
     
     print("Output: " + std_output) # Print Output
     
@@ -48,8 +48,8 @@ try:
 
     GPIO.output(26, 1) # Chip Enable by pulling high
     
-    lidar3_process = subprocess.Popen(['./runme3'], stdout = subprocess.PIPE) 
-    std_output = lidar3_process.communicate()[0] 
+    lidar3_process = subprocess.Popen(['/home/pi/A-Maze/main/runme3'], stdout = subprocess.PIPE) 
+    std_output = lidar3_process.communicate()[0]
     
     print("Output: " + std_output) # Print Output
 
