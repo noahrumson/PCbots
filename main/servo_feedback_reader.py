@@ -5,7 +5,7 @@ import time
 
 class ServoFeedbackReader(threading.Thread):
     def __init__(self, servo_handler, killqueue):
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, name='SERVO_FEEDBACK_READER')
         self.daemon = True
         self.servo_handler = servo_handler
         self.servo_feedback_queue = Queue.Queue()
@@ -89,6 +89,7 @@ class ServoFeedbackReader(threading.Thread):
         while True:
             if not self.killqueue.empty():
                 # End this thread
+                print 'QUITTING SERVO_FEEDBACK_READER THREAD'
                 return
             self.get_data()
             

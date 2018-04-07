@@ -24,7 +24,7 @@ class LidarReader(threading.Thread):
         self.lib = lib
         self.killqueue = killqueue
         
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, name='LIDAR_READER')
         # TODO: Depending on whether or not the Lidar C code can handle an
         # "ungraceful" crash, set daemon equal to True or False. True if it can
         # be terminated spontaneously without causing problems... Defaults to
@@ -82,6 +82,7 @@ class LidarReader(threading.Thread):
         while True:
             if not self.killqueue.empty():
                 # End this thread
+                print 'QUITTING LIDAR_READER THREAD'
                 return
             self.get_data()
 

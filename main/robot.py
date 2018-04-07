@@ -214,7 +214,7 @@ class Robot(object):
                 delta_angles = self.servo_handler.get_delta_angles(prev_angles, # TODO: @ CONSIDER TESTING
                                                                     angles)
                 for x in delta_angles:
-                    if abs(x) <= 0.0001:
+                    if abs(x) <= 0.000001:
                         print "Updating too fast"
                 #print 'T DIFF (period): '
                 #print time.time() - cur_time
@@ -742,11 +742,15 @@ if __name__ == '__main__':
     # subprocess.call('sudo pigpiod', shell=True)
     try:
         while True:
+            # Seems that each pigpio.pi() opens a new thread
+            # (see output of threading.active_count()). This takes up RPi
+            # resources and affects its driving capabilities, it seems, so be
+            # sure to close the temp_pi_handler each loop...
+            temp_pi_handler = pigpio.pi() # Temp handler to listen to start button
             print '##################NUM THREADS:',threading.active_count()
-            temp_handler = pigpio.pi() # Temp handler to listen to start button
             print "Waiting for start press..."
-            if temp_handler.wait_for_edge(23, pigpio.FALLING_EDGE,10800):
-                print "button pressed, robot class starting"
+            if temp_pi_handler.wait_for_edge(23, pigpio.FALLING_EDGE,10800):
+                print 'White button pressed, robot class starting'
                 robot = Robot()
 
                 try:
@@ -760,6 +764,8 @@ if __name__ == '__main__':
                 except KeyboardInterrupt as e:
                     print e
                     break
+                finally:
+                    temp_pi_handler.stop()
             else:
                 break
     finally:

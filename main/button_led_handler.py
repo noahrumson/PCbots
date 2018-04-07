@@ -3,6 +3,7 @@ import threading
 import Queue
 import time
 import subprocess
+import sys
 
 # TODO:
 
@@ -18,7 +19,7 @@ import subprocess
 
 class ButtonInput(threading.Thread):
     def __init__(self, lib, pi_handler, button, killqueue):
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, name='BUTTON_INPUT')
     	# Maps button names to their signal pins
         self.buttons = {'white': 23, 'black': 24}
         # The white button is on gpio 23
@@ -45,12 +46,15 @@ class ButtonInput(threading.Thread):
         while True:
             if not self.killqueue.empty():
                 # End this thread
+                print 'QUITTING BUTTON_INPUT THREAD'
                 return
             try:
                 if self.pi.wait_for_edge(self.current_button, pigpio.FALLING_EDGE, 4):
                     self.button_queue.put(True)
             except AttributeError:
                 # This seems like bad coding practice, but is an attempt at a quick fix
+                print 'QUITTING BUTTON_INPUT THREAD'
+                sys.exit()
                 return
 
 class LEDOutput(threading.Thread):
