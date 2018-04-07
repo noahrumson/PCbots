@@ -24,7 +24,7 @@ class Robot(object):
     def __init__(self):
         # Run the pigpio daemon
         #os.system('sudo pigpiod') # TODO: Make sure this actually works
-        #subprocess.call(['sudo', 'pigpiod'])
+        subprocess.call('sudo pigpiod', shell=True)
         
         GPIO.setmode(GPIO.BCM)     # Number GPIOs by channelID
         GPIO.setwarnings(False)    # Ignore Errors
@@ -137,10 +137,10 @@ class Robot(object):
         
         # while True:
 
-        self.square_x = 0
-        self.square_y = 0
-        self.last_square_at_x = 0
-        self.last_square_at_y = 0
+        self.square_x = 0 # index of maze
+        self.square_y = 0 # index of maze
+        self.last_square_at_x = 0 # mm
+        self.last_square_at_y = 0 # mm
 
         self.graph = Graph()
         self.in_first_square()
@@ -255,31 +255,34 @@ class Robot(object):
         self.servo_handler.stop_all()
 
     def check_if_new_square(self, lidar_data):
-        if (self.servo_handler.direction == ServoHandler.DIRECTION_NORTH and 
+        if (self.servo_handler.direction == ServoHandler.DIRECTION_NORTH and
             ((lidar_data.is_north_wall() and lidar_data.north_dist <= self.NEAR_WALL_THRESH) or
                 self.cur_pose.y - self.last_square_at_y >= 180)):
-                print "HERE"
+                self.last_square_at_y = self.cur_pose.y
                 self.square_y += 1
                 self.in_new_square(lidar_data)
                 self.decide_turn()
                 print "(" + str(self.square_x) + ", " + str(self.square_y) + ")"
-        if (self.servo_handler.direction == ServoHandler.DIRECTION_WEST and 
+        if (self.servo_handler.direction == ServoHandler.DIRECTION_WEST and
             ((lidar_data.is_west_wall() and lidar_data.west_dist <= self.NEAR_WALL_THRESH) or
                 self.last_square_at_x - self.cur_pose.x >= 180)):
+                self.last_square_at_x = self.cur_pose.x
                 self.square_x -= 1
                 self.in_new_square(lidar_data)
                 self.decide_turn()
                 print "(" + str(self.square_x) + ", " + str(self.square_y) + ")"
-        if (self.servo_handler.direction == ServoHandler.DIRECTION_SOUTH and 
+        if (self.servo_handler.direction == ServoHandler.DIRECTION_SOUTH and
             ((lidar_data.is_south_wall() and lidar_data.south_dist <= self.NEAR_WALL_THRESH) or
                 self.last_square_at_y - self.cur_pose.y >= 180)):
+                self.last_square_at_y = self.cur_pose.y
                 self.square_y -= 1
                 self.in_new_square(lidar_data)
                 self.decide_turn()
                 print "(" + str(self.square_x) + ", " + str(self.square_y) + ")"
-        if (self.servo_handler.direction == ServoHandler.DIRECTION_EAST and 
+        if (self.servo_handler.direction == ServoHandler.DIRECTION_EAST and
             ((lidar_data.is_east_wall() and lidar_data.east_dist <= self.NEAR_WALL_THRESH) or
                 self.cur_pose.x - self.last_square_at_x >= 180)):
+                self.last_square_at_x = self.cur_pose.x
                 self.square_x += 1
                 self.in_new_square(lidar_data)
                 self.decide_turn()
@@ -306,11 +309,18 @@ class Robot(object):
     def decide_turn(self):
         adjacent_nodes = self.graph.findAdjacent(self.graph.getCurrentNode())
         print "adjacent", adjacent_nodes
+        for node in adjacent_nodes:
+            print node.getXY()
 
         turn_node = min(adjacent_nodes, key = lambda x: x.getVisited())
+        print 'HERERERERERERER: ', turn_node.getXY()
         node_x, node_y = turn_node.getXY()
+        print '>>> node_x', node_x
+        print '>>> node_y', node_y
+        print '>>> self.square_x', self.square_x
+        print '>>> self.square_y', self.square_y
         if node_x - self.square_x == 1:
-            self.servo_handler.move_east()
+            self.servo_handler.move_east() # TODO: WE SHOULD NOT BE CALLING THESE FROM LIDAR DATA IN ROBOT.PY, SHOULD WE? WE SHOULD USE CORRECTED VALUES FROM P-ONLY LOOP, NO? NOT SURE... TALK THROUGH THIS WITH NOAH
         elif self.square_x - node_x == 1:
             self.servo_handler.move_west()
         elif node_y - self.square_y == 1:
@@ -680,6 +690,6 @@ if __name__ == '__main__':
     finally:
         print 'Terminating robot.py program'
         GPIO.cleanup()
-        #subprocess.call(['sudo', 'killall', 'pigpiod'])
+        subprocess.call('sudo killall pigpiod', shell=True)
         robot.shutdown()
         print 'FINALLY'

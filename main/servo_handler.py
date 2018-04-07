@@ -120,6 +120,8 @@ class ServoHandler():
         return delta_angles
         
     def move_north(self):
+        print 'MOVING NORTH'
+        # TODO: WE SHOULD NOT BE CALLING THESE FROM LIDAR DATA IN ROBOT.PY, SHOULD WE? WE SHOULD USE CORRECTED VALUES FROM P-ONLY LOOP, NO? NOT SURE... TALK THROUGH THIS WITH NOAH
         # Uncorrected northward movement, medium speed
         self.direction = ServoHandler.DIRECTION_NORTH
         self.send_signal('ne', -75)
@@ -128,6 +130,7 @@ class ServoHandler():
         self.send_signal('sw', 65)
         
     def move_south(self):
+        print 'MOVING SOUTH'
         # Uncorrected southward movement, medium speed
         self.direction = ServoHandler.DIRECTION_SOUTH
         self.send_signal('ne', 60)
@@ -136,6 +139,7 @@ class ServoHandler():
         self.send_signal('sw', -75)
         
     def move_east(self):
+        print 'MOVING EAST'
         # Uncorrected eastward movement, medium speed
         self.direction = ServoHandler.DIRECTION_EAST
         self.send_signal('ne', 75)
@@ -144,6 +148,7 @@ class ServoHandler():
         self.send_signal('sw', -75)
         
     def move_west(self):
+        print 'MOVING WEST'
         # Uncorrected westward movement, medium speed
         self.direction = ServoHandler.DIRECTION_WEST
         self.send_signal('ne', -75)

@@ -22,6 +22,9 @@ class Graph(object):
 	#method to set currentNode
     def setCurrentNode(self,nodeX,nodeY):
         node = self.findNode(nodeX,nodeY)
+        if node.getIntVal() < 0 or node.getIntVal() > self.size-1:
+            print "Invalid node input, not on board"
+            raise ValueError()
         self.currentNode = node.getIntVal()
 		
 
@@ -45,7 +48,7 @@ class Graph(object):
 		#tests to see if nodes are even on the board
         if node1.getIntVal() < 0 or node1.getIntVal() > self.size-1 or node2.getIntVal() < 0 or node2.getIntVal() > self.size-1:
             print "Invalid node input, not on board"
-            return
+            raise ValueError()
 
 		#the differences between the inputted x and y valuse
         xdif = node1x - node2x
@@ -53,7 +56,7 @@ class Graph(object):
 
 		#checking if the differences make sense, absval of xdif has to be 1 and ydif has to be 0, or xdif = 0 and absval of ydif has to be 1
         if (abs(xdif) == 1 and ydif == 0) or (abs(ydif) == 1 and xdif == 0):
-			print "test"
+			print '----------(X, Y):', node1.getIntVal(), node2.getIntVal()
 			self.adjacencyArray[node1.getIntVal()][node2.getIntVal()] = 1
 			self.adjacencyArray[node2.getIntVal()][node1.getIntVal()] = 1
 
@@ -66,11 +69,11 @@ class Graph(object):
         adjacent = []
         index = node.getIntVal()
 
-        for i in range(self.boardWidth):
-            print 'EDGE VALS:', adjacencyArray[index][i]
+        for i in range(self.size):
             if self.adjacencyArray[index][i] == 1:
-                nodeY = index/self.boardWidth
-                nodeX = index - self.boardWidth*nodeY
+                print 'ADJ:', i
+                nodeY = i/self.boardWidth
+                nodeX = i - self.boardWidth*nodeY
                 adjacent.append(self.findNode(nodeX, nodeY))
 
         return adjacent
