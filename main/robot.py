@@ -155,6 +155,8 @@ class Robot(object):
             # Try to read Lidar data, if new data has come in
             if not self.lidar_queue.empty():
                 lidar_data = self.lidar_queue.get()
+                self.check_if_new_square(lidar_data)
+                '''
                 if (self.servo_handler.direction == ServoHandler.DIRECTION_NORTH and
                     lidar_data.north_dist <= self.NEAR_WALL_THRESH and not lidar_data.is_west_wall()):
                     self.servo_handler.move_west()
@@ -172,6 +174,7 @@ class Robot(object):
                     self.servo_handler.move_south()
                 #print lidar_data.to_string()
                 self.adjust_servos_from_lidar(lidar_data)
+                '''
                 #print '------------------'
                # print 'LIDAR:'
                # print lidar_data.to_string()
@@ -203,7 +206,8 @@ class Robot(object):
 
                 self.proportional_adjust_servos()
 
-                if self.servo_handler.direction == ServoHandler.DIRECTION_NORTH and self.cur_pose.y - last_square_at_y >= 180:
+                '''
+                if self.servo_handler.direction == ServoHandler.DIRECTION_NORTH and self.cur_pose.y - self.last_square_at_y >= 180:
                     self.in_new_square()
                     self.square_y += 1
                     print "(" + str(self.square_x) + ", " + str(self.square_y) + ")"
@@ -223,7 +227,7 @@ class Robot(object):
                     self.square_x += 1
                     print "(" + str(self.square_x) + ", " + str(self.square_y) + ")"
                     self.last_square_at_x = self.cur_pose.x
-
+                '''
 
                 self.prev_pose = self.cur_pose
                # print self.cur_pose.heading_deg
@@ -255,28 +259,28 @@ class Robot(object):
             (lidar_data.is_north_wall() and lidar_data.north_dist <= self.NEAR_WALL_THRESH) or
                 self.cur_pose.y - self.last_square_at_y >= 180):
                 self.square_y += 1
-                self.in_new_square()
+                self.in_new_square(lidar_data)
                 self.decide_turn()
                 print "(" + str(self.square_x) + ", " + str(self.square_y) + ")"
         if (self.servo_handler.direction == ServoHandler.DIRECTION_WEST and 
             (lidar_data.is_west_wall() and lidar_data.west_dist <= self.NEAR_WALL_THRESH) or
                 self.last_square_at_x - self.cur_pose.x >= 180):
                 self.square_x -= 1
-                self.in_new_square()
+                self.in_new_square(lidar_data)
                 self.decide_turn()
                 print "(" + str(self.square_x) + ", " + str(self.square_y) + ")"
         if (self.servo_handler.direction == ServoHandler.DIRECTION_SOUTH and 
             (lidar_data.is_south_wall() and lidar_data.south_dist <= self.NEAR_WALL_THRESH) or
                 self.last_square_at_y - self.cur_pose.y >= 180):
                 self.square_y -= 1
-                self.in_new_square()
+                self.in_new_square(lidar_data)
                 self.decide_turn()
                 print "(" + str(self.square_x) + ", " + str(self.square_y) + ")"
         if (self.servo_handler.direction == ServoHandler.DIRECTION_EAST and 
             (lidar_data.is_east_wall() and lidar_data.east_dist <= self.NEAR_WALL_THRESH) or
-                self.cur_pose.x - last_square_at_x >= 180):
+                self.cur_pose.x - self.last_square_at_x >= 180):
                 self.square_x += 1
-                self.in_new_square()
+                self.in_new_square(lidar_data)
                 self.decide_turn()
                 print "(" + str(self.square_x) + ", " + str(self.square_y) + ")"
 
@@ -288,19 +292,19 @@ class Robot(object):
         print "new square gong " + str(self.servo_handler.direction)
         self.graph.setCurrentNode(self.square_x, self.square_y)
         self.graph.updateNodeVisit()
-        if not lidar_data.is_wall_north():
+        if not lidar_data.is_north_wall():
             self.graph.addEdge(self.square_x, self.square_y, self.square_x, self.square_y + 1)
-        if not lidar_data.is_wall_west():
+        if not lidar_data.is_west_wall():
             self.graph.addEdge(self.square_x, self.square_y, self.square_x - 1, self.square_y)
-        if not lidar_data.is_wall_south():
+        if not lidar_data.is_south_wall():
             self.graph.addEdge(self.square_x, self.square_y, self.square_x, self.square_y - 1)
-        if not lidar_data.is_wall_east():
+        if not lidar_data.is_east_wall():
             self.graph.addEdge(self.square_x, self.square_y, self.square_x + 1, self.square_y)
 
     def decide_turn(self):
         adjacent_nodes = self.graph.findAdjacent(self.graph.getCurrentNode())
 
-        turn_node = min(adjacent_nodes, lambda x: x.getVisited())
+        turn_node = min(adjacent_nodes, key = lambda x: x.getVisited())
         node_x, node_y = turn_node.getXY()
         if node_x - self.square_x == 1:
             self.servo_handler.move_east()
