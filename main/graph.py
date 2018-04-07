@@ -24,6 +24,9 @@ class Graph(object):
 		node = self.findNode(node1x,node1y)
 		self.currentNode = node
 
+	def getCurrentNode(self):
+		return getCurrentNode
+
 	#method to update the amount of time it has been visited
 	def updateNodeVisit(self):
 		self.currentNode.visit()
