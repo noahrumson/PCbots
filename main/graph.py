@@ -52,17 +52,10 @@ class Graph(object):
         ydif = node1y - node2y
 
 		#checking if the differences make sense, absval of xdif has to be 1 and ydif has to be 0, or xdif = 0 and absval of ydif has to be 1
-<<<<<<< HEAD
         if (abs(xdif) == 1 and ydif == 0) or (abs(ydif) == 1 and xdif == 0):
-            print '>>>NODE TEST'
-            self.adjacencyArray[node1.getIntVal()][node2.getIntVal()] = 1
-            self.adjacencyArray[node2.getIntVal()][node1.getIntVal()] = 1
-=======
-		if (abs(xdif) == 1 and ydif == 0) or (abs(ydif) == 1 and xdif == 0):
 			print "test"
 			self.adjacencyArray[node1.getIntVal()][node2.getIntVal()] = 1
 			self.adjacencyArray[node2.getIntVal()][node1.getIntVal()] = 1
->>>>>>> 5650a0bd98f0389105147e9fcd46ebe9f967de0d
 
         else:
             print "Invalid node inputs, nodes should not be adjacent"
@@ -74,6 +67,7 @@ class Graph(object):
         index = node.getIntVal()
 
         for i in range(self.boardWidth):
+            print 'EDGE VALS:', adjacencyArray[index][i]
             if self.adjacencyArray[index][i] == 1:
                 nodeY = index/self.boardWidth
                 nodeX = index - self.boardWidth*nodeY
