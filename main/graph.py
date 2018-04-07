@@ -53,8 +53,8 @@ class Graph(object):
 
 		#checking if the differences make sense, absval of xdif has to be 1 and ydif has to be 0, or xdif = 0 and absval of ydif has to be 1
 		if (abs(xdif) == 1 and ydif == 0) or (abs(ydif) == 1 and xdif == 0):
-			self.adjacencyArray[node1][node2] = 1
-			self.adjacencyArray[node2][node1] = 1
+			self.adjacencyArray[node1.getIntVal()][node2.getIntVal()] = 1
+			self.adjacencyArray[node2.getIntVal()][node1.getIntVal()] = 1
 
 		else:
 			print "Invalid node inputs, nodes should not be adjacent"
@@ -88,7 +88,7 @@ class Graph(object):
 	def isConnected(self, node1x, node1y, node2x, node2y):
 		node1 = self.findNode(node1x,node1y)
 		node2 = self.findNode(node2x, node2y)
-		if self.adjacencyArray[node1][node2] == 1 or self.adjacencyArray[node2][node1] == 1:
+		if self.adjacencyArray[node1.getIntVal()][node2.getIntVal()] == 1 or self.adjacencyArray[node2.getIntVal()][node1.getIntVal()] == 1:
 			return True
 		else:
 			return False
