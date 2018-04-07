@@ -19,6 +19,29 @@ import button_led_handler
 # To access Raspberry Pi's GPIO pins:
 #import RPi.GPIO as GPIO
 
+# Some things to initialize globally, e.g., threads that should not be created
+# upon each instantiation of a Robot object
+lib = ctypes.cdll.LoadLibrary(os.path.abspath('/home/pi/A-Maze/'
+                                                'libsensordata.so'))
+# Create a LidarReader object
+lreader = LidarReader(lib)
+# Call the LidarReader object's start() method, starting its thread
+lreader.start()
+print 'LidarReader thread started'
+
+global_pi = pigpio.pi() # binds to port 8888 by default
+
+servo_handler = ServoHandler(lib, global_pi)
+
+servo_feedback_reader = ServoFeedbackReader(servo_handler)
+# Start the servo feedback reader's thread
+servo_feedback_reader.start()
+print 'Servo feedback thread started'
+
+buttoninput = button_led_handler.ButtonInput(lib, global_pi, 'black')
+buttoninput.start()
+print 'Reset button thread started'
+
 class Robot(object):
 
     def __init__(self):
@@ -41,12 +64,11 @@ class Robot(object):
         #GPIO.output(19, 0)
         #GPIO.output(26, 0)
         
-        self.lib = ctypes.cdll.LoadLibrary(os.path.abspath('/home/pi/A-Maze/'
-                                                        'libsensordata.so'))
+        self.lib = lib
 
         subprocess.call("python init_i2c.py", shell=True)
         self.lib.init()
-        self.pi = pigpio.pi() # binds to port 8888 by default
+        self.pi = global_pi
         # For servo feedback data: set the return types to double
         self.lib.servo_angle_ne.restype = ctypes.c_double
         self.lib.servo_angle_nw.restype = ctypes.c_double
@@ -88,24 +110,14 @@ class Robot(object):
         pass
         
     def initialize_lidars(self):
-        # Create a LidarReader object
-        self.lreader = LidarReader(self.lib)
-        # Call the LidarReader object's start() method, starting its thread
-        self.lreader.start()
-        print 'LidarReader thread started'
+        self.lreader = lreader
         
     def initialize_servos(self):
-        self.servo_handler = ServoHandler(self.lib, self.pi)
-        self.servo_feedback_reader = ServoFeedbackReader(self.servo_handler)
-        # Start the servo feedback reader's thread
-        self.servo_feedback_reader.start()
-        print 'Servo feedback thread started'
+        self.servo_handler = servo_handler
+        self.servo_feedback_reader = servo_feedback_reader
 
     def initialize_reset_button(self):
-        self.buttoninput = button_led_handler.ButtonInput(self.lib, self.pi, 'black')
-
-        self.buttoninput.start()
-        print 'Reset button thread started'
+        self.buttoninput = buttoninput
         self.button_queue = self.buttoninput.button_queue
         
     def initialize_leds(self):
@@ -328,13 +340,17 @@ class Robot(object):
               and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y + 1)
               and self.graph.isConnected(self.square_x + 1, self.square_y, self.square_x + 1, self.square_y + 1)
               and self.graph.isConnected(self.square_x, self.square_y+1, self.square_x + 1, self.square_y + 1)):
+              
+              pass
                       
         #option2
         if self.square_x >= 1 and self.square_y <= 14:
             if (self.graph.isConnected(self.square_x, self.square_y, self.square_x - 1, self.square_y)
               and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y + 1)
               and self.graph.isConnected(self.square_x, self.square_y + 1, self.square_x - 1, self.square_y + 1)
-              and self.graph.isConnected(self.square_x - 1, self.square_y, self.square_x - 1, self.square_y + 1):
+              and self.graph.isConnected(self.square_x - 1, self.square_y, self.square_x - 1, self.square_y + 1)):
+              
+              pass
               
             
         #option3
@@ -342,15 +358,18 @@ class Robot(object):
             if (self.graph.isConnected(self.square_x, self.square_y, self.square_x - 1, self.square_y)
               and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y - 1)
               and self.graph.isConnected(self.square_x, self.square_y - 1, self.square_x - 1, self.square_y)
-              and self.graph.isConnected(self.square_x - 1, self.square_y, self.square_x, self.square_y - 1):
+              and self.graph.isConnected(self.square_x - 1, self.square_y, self.square_x, self.square_y - 1)):
+              
+              pass
             
         #option4
         if self.square_x <= 14 and self.square_y >= 1:
             if(self.graph.isConnected(self.square_x, self.square_y, self.square_x + 1, self.square_y)
               and self.graph.isConnected(self.square_x, self.square_y, self.square_x, self.square_y - 1)
               and self.graph.isConnected(self.square_x + 1, self.square_y, self.square_x + 1, self.square_y - 1)
-              and self.graph.isConnected(self.square_x, self.square_y - 1, self.square_x + 1, self.square_y - 1))
-            
+              and self.graph.isConnected(self.square_x, self.square_y - 1, self.square_x + 1, self.square_y - 1)):
+              
+              pass
 
     def decide_turn(self):
         adjacent_nodes = self.graph.findAdjacent(self.graph.getCurrentNode())
@@ -368,6 +387,8 @@ class Robot(object):
     def proportional_adjust_servos(self):
         K_p = 4
         dir = self.servo_handler.direction
+        print 'CURPOSE HDG:',self.cur_pose.hdg
+        print 'TARGET HDG:',self.target_hdg
         if dir == ServoHandler.DIRECTION_NORTH:
             self.servo_handler.adjust_signal("sw", (self.cur_pose.hdg - self.target_hdg) * K_p)
         elif dir == ServoHandler.DIRECTION_WEST:
@@ -735,6 +756,7 @@ if __name__ == '__main__':
                 except ResetException:
                     print "EMERGENCY! STOPPING!... Press White Button to start again"
                     robot.shutdown()
+                    # Manually close threads. They are daemon threads, but since main thread does not end,
                     continue
                 except KeyboardInterrupt as e:
                     print e
