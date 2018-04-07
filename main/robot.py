@@ -13,6 +13,7 @@ import RPi.GPIO as GPIO
 from lidar_reader import LidarReader
 from servo_handler import ServoHandler
 from servo_feedback_reader import ServoFeedbackReader
+from graph import Graph
 import button_led_handler
 
 # To access Raspberry Pi's GPIO pins:
@@ -136,8 +137,13 @@ class Robot(object):
         
         # while True:
 
-        square = 1
-        lastSquareAt = 0
+        self.square_x = 0
+        self.square_y = 0
+        self.last_square_at_x = 0
+        self.last_square_at_y = 0
+
+        self.graph = Graph()
+        self.in_first_square()
         #while (t_elapsed < 10):
         while (True):
             cur_time = time.time() # TODO: @ CONSIDER TESTING
@@ -157,6 +163,7 @@ class Robot(object):
                     self.servo_handler.move_east()
                 elif (self.servo_handler.direction == ServoHandler.DIRECTION_WEST and
                     lidar_data.west_dist <= self.NEAR_WALL_THRESH and not lidar_data.is_south_wall()):
+                    print last_square_at_x - self.cur_pose.x
                     self.servo_handler.move_south()
                 elif self.servo_handler.direction == ServoHandler.DIRECTION_SOUTH and lidar_data.south_dist <= self.NEAR_WALL_THRESH:
                     self.servo_handler.move_north()
@@ -189,7 +196,6 @@ class Robot(object):
                                                                     angles)
                 for x in delta_angles:
                     if abs(x) <= 0.0001:
-                        pass
                         print "Updating too fast"
                 #print 'T DIFF (period): '
                 #print time.time() - cur_time
@@ -197,8 +203,30 @@ class Robot(object):
 
                 self.proportional_adjust_servos()
 
+                if self.servo_handler.direction == ServoHandler.DIRECTION_NORTH and self.cur_pose.y - last_square_at_y >= 180:
+                    self.in_new_square()
+                    self.square_y += 1
+                    print "(" + str(self.square_x) + ", " + str(self.square_y) + ")"
+                    self.last_square_at_y = self.cur_pose.y
+                elif self.servo_handler.direction == ServoHandler.DIRECTION_WEST and self.last_square_at_x - self.cur_pose.x >= 180:
+                    self.in_new_square()
+                    self.square_x -= 1
+                    print "(" + str(self.square_x) + ", " + str(self.square_y) + ")"
+                    self.last_square_at_x = self.cur_pose.x
+                elif self.servo_handler.direction == ServoHandler.DIRECTION_SOUTH and self.last_square_at_y - self.cur_pose.y >= 180:
+                    self.in_new_square()
+                    self.square_y -= 1
+                    print "(" + str(self.square_x) + ", " + str(self.square_y) + ")"
+                    last_square_at_y = self.cur_pose.y
+                elif self.servo_handler.direction == ServoHandler.DIRECTION_EAST and self.cur_pose.x - self.last_square_at_x >= 180:
+                    self.in_new_square()
+                    self.square_x += 1
+                    print "(" + str(self.square_x) + ", " + str(self.square_y) + ")"
+                    self.last_square_at_x = self.cur_pose.x
+
+
                 self.prev_pose = self.cur_pose
-                print self.cur_pose.heading_deg
+               # print self.cur_pose.heading_deg
 
                 prev_angles = angles
                 
@@ -222,6 +250,67 @@ class Robot(object):
 
         self.servo_handler.stop_all()
 
+    def check_if_new_square(self, lidar_data):
+        if (self.servo_handler.direction == ServoHandler.DIRECTION_NORTH and 
+            (lidar_data.is_north_wall() and lidar_data.north_dist <= self.NEAR_WALL_THRESH) or
+                self.cur_pose.y - self.last_square_at_y >= 180):
+                self.square_y += 1
+                self.in_new_square()
+                self.decide_turn()
+                print "(" + str(self.square_x) + ", " + str(self.square_y) + ")"
+        if (self.servo_handler.direction == ServoHandler.DIRECTION_WEST and 
+            (lidar_data.is_west_wall() and lidar_data.west_dist <= self.NEAR_WALL_THRESH) or
+                self.last_square_at_x - self.cur_pose.x >= 180):
+                self.square_x -= 1
+                self.in_new_square()
+                self.decide_turn()
+                print "(" + str(self.square_x) + ", " + str(self.square_y) + ")"
+        if (self.servo_handler.direction == ServoHandler.DIRECTION_SOUTH and 
+            (lidar_data.is_south_wall() and lidar_data.south_dist <= self.NEAR_WALL_THRESH) or
+                self.last_square_at_y - self.cur_pose.y >= 180):
+                self.square_y -= 1
+                self.in_new_square()
+                self.decide_turn()
+                print "(" + str(self.square_x) + ", " + str(self.square_y) + ")"
+        if (self.servo_handler.direction == ServoHandler.DIRECTION_EAST and 
+            (lidar_data.is_east_wall() and lidar_data.east_dist <= self.NEAR_WALL_THRESH) or
+                self.cur_pose.x - last_square_at_x >= 180):
+                self.square_x += 1
+                self.in_new_square()
+                self.decide_turn()
+                print "(" + str(self.square_x) + ", " + str(self.square_y) + ")"
+
+    def in_first_square(self):
+        self.graph.updateNodeVisit()
+        self.graph.addEdge(0, 0, 0, 1)
+
+    def in_new_square(self, lidar_data):
+        print "new square gong " + str(self.servo_handler.direction)
+        self.graph.setCurrentNode(self.square_x, self.square_y)
+        self.graph.updateNodeVisit()
+        if not lidar_data.is_wall_north():
+            self.graph.addEdge(self.square_x, self.square_y, self.square_x, self.square_y + 1)
+        if not lidar_data.is_wall_west():
+            self.graph.addEdge(self.square_x, self.square_y, self.square_x - 1, self.square_y)
+        if not lidar_data.is_wall_south():
+            self.graph.addEdge(self.square_x, self.square_y, self.square_x, self.square_y - 1)
+        if not lidar_data.is_wall_east():
+            self.graph.addEdge(self.square_x, self.square_y, self.square_x + 1, self.square_y)
+
+    def decide_turn(self):
+        adjacent_nodes = self.graph.findAdjacent(self.graph.getCurrentNode())
+
+        turn_node = min(adjacent_nodes, lambda x: x.getVisited())
+        node_x, node_y = turn_node.getXY()
+        if node_x - self.square_x == 1:
+            self.servo_handler.move_east()
+        elif self.square_x - node_x == 1:
+            self.servo_handler.move_west()
+        elif node_y - self.square_y == 1:
+            serf.servo_handler.move_north()
+        elif self.square_y - node.y == 1:
+            self.servo_handler.move_south()
+
     def proportional_adjust_servos(self):
         K_p = 4
         dir = self.servo_handler.direction
@@ -238,7 +327,7 @@ class Robot(object):
         '''
         Execute wall avoidance based on lidar data
         '''
-        K_p = 0.001
+        K_p = 10
         dir = self.servo_handler.direction
         
         '''
